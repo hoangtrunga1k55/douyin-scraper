@@ -1,0 +1,10 @@
+node_modules/
+.env
+downloads/
+.browser_data/
+*.log
+.DS_Store
+combined.log
+error.log
+debug_*.json
+debug_*.png

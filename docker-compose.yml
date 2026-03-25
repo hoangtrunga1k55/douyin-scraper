@@ -1,0 +1,18 @@
+services:
+  douyin-api:
+    build: .
+    container_name: douyin-downloader
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./browser_data:/app/.browser_data
+      - ./.env:/app/.env:ro
+    environment:
+      - NODE_ENV=production
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    # Required for Puppeteer
+    security_opt:
+      - seccomp=unconfined
+    shm_size: '512mb'
