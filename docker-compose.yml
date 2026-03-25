@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+      - "6080:6080" # noVNC port for GUI access
     volumes:
       - ./downloads:/app/downloads
       - ./browser_data:/app/.browser_data
@@ -12,6 +13,7 @@ services:
     environment:
       - NODE_ENV=production
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - DISPLAY=:99
     # Required for Puppeteer
     security_opt:
       - seccomp=unconfined

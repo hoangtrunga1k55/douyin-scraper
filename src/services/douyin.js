@@ -5,6 +5,7 @@ puppeteer.use(StealthPlugin());
 const fs = require('fs');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { sendTelegramMessage } = require('../utils/telegram');
 const {
   extractVideoId,
   extractSecUid,
@@ -77,9 +78,11 @@ async function openLoginBrowser() {
   fs.mkdirSync(config.browserDataDir, { recursive: true });
 
   logger.info('Opening login browser (visible)...');
+  const execPath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
   const loginBrowser = await puppeteer.launch({
     headless: false,
     userDataDir: config.browserDataDir,
+    executablePath: execPath || undefined,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -286,10 +289,10 @@ async function parseVideoViaPuppeteer(videoId) {
       if (filterInfo) {
         const reason = filterInfo.filter_reason || 'unknown';
         const msg = filterInfo.detail_msg || '';
+        const errMsg = `Video bị chặn bởi Douyin (lý do: ${reason}). ${msg}. Video này có thể bị giới hạn vùng (chỉ xem được từ Trung Quốc) hoặc đã bị xóa.`;
+        sendTelegramMessage(`⚠️ <b>Cảnh báo Douyin</b>\n\n${errMsg}`);
         throw Object.assign(
-          new Error(
-            `Video bị chặn bởi Douyin (lý do: ${reason}). ${msg}. Video này có thể bị giới hạn vùng (chỉ xem được từ Trung Quốc) hoặc đã bị xóa.`
-          ),
+          new Error(errMsg),
           { name: 'VideoFilteredError', statusCode: 403 }
         );
       }
@@ -302,10 +305,10 @@ async function parseVideoViaPuppeteer(videoId) {
     }
     if (filterInfo) {
       const reason = filterInfo.filter_reason || 'unknown';
+      const errMsg = `Video bị chặn bởi Douyin (lý do: ${reason}). Video này có thể bị giới hạn vùng hoặc đã bị xóa.`;
+      sendTelegramMessage(`⚠️ <b>Cảnh báo Douyin</b>\n\n${errMsg}`);
       throw Object.assign(
-        new Error(
-          `Video bị chặn bởi Douyin (lý do: ${reason}). Video này có thể bị giới hạn vùng hoặc đã bị xóa.`
-        ),
+        new Error(errMsg),
         { name: 'VideoFilteredError', statusCode: 403 }
       );
     }
@@ -392,10 +395,10 @@ async function parseVideoViaPuppeteer(videoId) {
       };
     }
 
+    const errMsg = `Không thể lấy dữ liệu video.${overseasHint} Cookie có thể đã hết hạn — thử GET /api/auth/login.`;
+    sendTelegramMessage(`❌ <b>Lỗi Cookie Douyin Downloader</b>\n\n${errMsg}`);
     throw Object.assign(
-      new Error(
-        `Không thể lấy dữ liệu video.${overseasHint} Cookie có thể đã hết hạn — thử GET /api/auth/login.`
-      ),
+      new Error(errMsg),
       { statusCode: 404 }
     );
   } finally {
@@ -486,7 +489,9 @@ async function getUserVideos(inputUrl, count = 20, cursor = 0) {
   // Get cookies from persistent browser profile
   const cookieStr = await getCookieString();
   if (!cookieStr) {
-    throw new Error('Không có cookie. Hãy đăng nhập: GET /api/auth/login rồi GET /api/auth/confirm');
+    const errMsg = 'Không có cookie. Hãy đăng nhập: GET /api/auth/login rồi GET /api/auth/confirm';
+    sendTelegramMessage(`❌ <b>Lỗi Cookie Douyin Downloader</b>\n\n${errMsg}`);
+    throw new Error(errMsg);
   }
 
   // Direct API call (bypasses captcha entirely)
@@ -732,9 +737,9 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
       };
     }
 
-    throw new Error(
-      'Không thể lấy danh sách video. Hãy đăng nhập: GET /api/auth/login rồi GET /api/auth/confirm'
-    );
+    const errMsg = 'Không thể lấy danh sách video. Hãy đăng nhập: GET /api/auth/login rồi GET /api/auth/confirm';
+    sendTelegramMessage(`❌ <b>Lỗi Cookie Douyin Downloader</b>\n\n${errMsg}`);
+    throw new Error(errMsg);
   } finally {
     await page.close();
   }
