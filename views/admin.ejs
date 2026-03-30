@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Douyin Downloader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .token-cell { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 0.75rem; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen pb-10">
+  <div class="max-w-6xl mx-auto px-4 pt-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-3xl font-bold">Admin Panel</h2>
+      <div class="space-x-3">
+        <a href="/dashboard" class="text-blue-600 hover:underline text-sm">Dashboard</a>
+        <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm">Logout</a>
+      </div>
+    </div>
+
+    <!-- ─── Settings ──────────────────────────── -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h3 class="text-lg font-bold text-yellow-800 mb-4">⚙️ Credit Settings</h3>
+      <form action="/admin/settings" method="POST">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <% settings.forEach(function(s) { %>
+            <div class="flex items-center space-x-2">
+              <input type="hidden" name="keys" value="<%= s.key %>">
+              <label class="flex-1 text-sm text-gray-700"><%= s.label || s.key %></label>
+              <input type="number" name="values" value="<%= s.value %>" min="0" class="w-20 border border-gray-300 rounded py-1 px-2 text-sm">
+            </div>
+          <% }); %>
+        </div>
+        <button type="submit" class="mt-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded text-sm">Save Settings</button>
+      </form>
+    </div>
+
+    <!-- ─── Users Table ───────────────────────── -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h3 class="text-lg font-bold mb-4">👥 Users (<%= users.length %>)</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 text-left">
+              <th class="py-2 px-3 border-b">Email</th>
+              <th class="py-2 px-3 border-b">Role</th>
+              <th class="py-2 px-3 border-b">Credits</th>
+              <th class="py-2 px-3 border-b">Token</th>
+              <th class="py-2 px-3 border-b">Status</th>
+              <th class="py-2 px-3 border-b">Joined</th>
+              <th class="py-2 px-3 border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% users.forEach(function(u) { %>
+              <tr class="hover:bg-gray-50 border-b <%= u.banned ? 'bg-red-50' : '' %>">
+                <td class="py-2 px-3 font-medium"><%= u.email %></td>
+                <td class="py-2 px-3">
+                  <span class="px-2 py-0.5 rounded text-xs text-white <%= u.role === 'admin' ? 'bg-purple-500' : 'bg-gray-400' %>"><%= u.role %></span>
+                </td>
+                <td class="py-2 px-3">
+                  <form action="/admin/grant" method="POST" class="flex items-center space-x-1">
+                    <input type="hidden" name="userId" value="<%= u._id %>">
+                    <span class="font-bold"><%= u.credits %></span>
+                    <input type="number" name="credits" placeholder="+" min="1" class="w-16 border rounded py-0.5 px-1 text-xs">
+                    <button type="submit" class="bg-green-500 text-white px-2 py-0.5 rounded text-xs">+</button>
+                  </form>
+                </td>
+                <td class="py-2 px-3">
+                  <div class="flex items-center space-x-1">
+                    <span class="token-cell" title="<%= u.apiToken %>"><%= u.apiToken %></span>
+                    <form action="/admin/change-token" method="POST" class="inline">
+                      <input type="hidden" name="userId" value="<%= u._id %>">
+                      <input type="hidden" name="newToken" value="">
+                      <button type="submit" title="Generate new token" class="text-yellow-600 hover:text-yellow-800 text-xs" onclick="return confirm('Generate new random token for <%= u.email %>?')">🔄</button>
+                    </form>
+                  </div>
+                </td>
+                <td class="py-2 px-3">
+                  <% if (u.banned) { %>
+                    <span class="text-red-600 font-bold text-xs">BANNED</span>
+                  <% } else { %>
+                    <span class="text-green-600 text-xs">Active</span>
+                  <% } %>
+                </td>
+                <td class="py-2 px-3 text-gray-500 text-xs"><%= new Date(u.createdAt).toLocaleDateString() %></td>
+                <td class="py-2 px-3">
+                  <div class="flex items-center space-x-1 flex-wrap gap-1">
+                    <!-- Ban/Unban -->
+                    <form action="/admin/ban" method="POST" class="inline">
+                      <input type="hidden" name="userId" value="<%= u._id %>">
+                      <button type="submit" class="<%= u.banned ? 'bg-green-500' : 'bg-red-500' %> text-white px-2 py-0.5 rounded text-xs" onclick="return confirm('<%= u.banned ? 'Unban' : 'Ban' %> <%= u.email %>?')">
+                        <%= u.banned ? 'Unban' : 'Ban' %>
+                      </button>
+                    </form>
+                    <!-- Change Password -->
+                    <button onclick="promptPassword('<%= u._id %>', '<%= u.email %>')" class="bg-blue-500 text-white px-2 py-0.5 rounded text-xs">Password</button>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── Banned IPs ────────────────────────── -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h3 class="text-lg font-bold text-red-800 mb-4">🚫 Banned IPs (<%= bannedIps.length %>)</h3>
+
+      <!-- Add new IP ban -->
+      <form action="/admin/ban-ip" method="POST" class="flex items-center space-x-2 mb-4">
+        <input type="text" name="ip" placeholder="IP address (e.g. 192.168.1.1)" required class="border border-gray-300 rounded py-1.5 px-3 text-sm w-48">
+        <input type="text" name="reason" placeholder="Reason (optional)" class="border border-gray-300 rounded py-1.5 px-3 text-sm w-48">
+        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1.5 px-4 rounded text-sm">Ban IP</button>
+      </form>
+
+      <% if (bannedIps.length > 0) { %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-red-50 text-left">
+                <th class="py-2 px-3 border-b">IP Address</th>
+                <th class="py-2 px-3 border-b">Reason</th>
+                <th class="py-2 px-3 border-b">Type</th>
+                <th class="py-2 px-3 border-b">Requests</th>
+                <th class="py-2 px-3 border-b">Banned At</th>
+                <th class="py-2 px-3 border-b">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% bannedIps.forEach(function(b) { %>
+                <tr class="hover:bg-red-50 border-b">
+                  <td class="py-2 px-3 font-mono font-bold"><%= b.ip %></td>
+                  <td class="py-2 px-3 text-gray-600"><%= b.reason %></td>
+                  <td class="py-2 px-3">
+                    <% if (b.autoBanned) { %>
+                      <span class="px-2 py-0.5 rounded text-xs bg-orange-500 text-white">Auto</span>
+                    <% } else { %>
+                      <span class="px-2 py-0.5 rounded text-xs bg-gray-500 text-white">Manual</span>
+                    <% } %>
+                  </td>
+                  <td class="py-2 px-3 text-center"><%= b.requestCount || 0 %></td>
+                  <td class="py-2 px-3 text-gray-500 text-xs"><%= new Date(b.createdAt).toLocaleString() %></td>
+                  <td class="py-2 px-3">
+                    <form action="/admin/unban-ip" method="POST" class="inline">
+                      <input type="hidden" name="ip" value="<%= b.ip %>">
+                      <button type="submit" class="bg-green-500 text-white px-3 py-0.5 rounded text-xs" onclick="return confirm('Unban <%= b.ip %>?')">Unban</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <p class="text-gray-400 text-sm">No banned IPs.</p>
+      <% } %>
+    </div>
+
+    <!-- ─── Packages ────────────────────────────── -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h3 class="text-lg font-bold text-green-800 mb-4">📦 Credit Packages</h3>
+
+      <!-- Add/Edit form -->
+      <form action="/admin/package" method="POST" class="flex flex-wrap md:flex-nowrap items-center gap-2 mb-4 bg-gray-50 p-4 rounded border">
+        <input type="hidden" name="packageId" id="editPackageId">
+        <input type="text" name="name" id="editPackageName" placeholder="Package Name (e.g. Gói 50k)" required class="border rounded py-1.5 px-3 text-sm flex-1 min-w-[200px]">
+        <input type="number" name="price" id="editPackagePrice" placeholder="Price (VND)" required min="0" class="border rounded py-1.5 px-3 text-sm w-32">
+        <input type="number" name="credits" id="editPackageCredits" placeholder="Credits" required min="1" class="border rounded py-1.5 px-3 text-sm w-32">
+        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1.5 px-4 rounded text-sm w-24" id="btnSavePackage">Add</button>
+        <button type="button" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-1.5 px-4 rounded text-sm hidden" id="btnCancelEdit" onclick="cancelEditPackage()">Cancel</button>
+      </form>
+
+      <% if (packages && packages.length > 0) { %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-green-50 text-left">
+                <th class="py-2 px-3 border-b">Name</th>
+                <th class="py-2 px-3 border-b">Price (VND)</th>
+                <th class="py-2 px-3 border-b">Credits</th>
+                <th class="py-2 px-3 border-b text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% packages.forEach(function(p) { %>
+                <tr class="hover:bg-green-50 border-b">
+                  <td class="py-2 px-3 font-bold"><%= p.name %></td>
+                  <td class="py-2 px-3"><%= new Intl.NumberFormat('vi-VN').format(p.price) %></td>
+                  <td class="py-2 px-3"><%= new Intl.NumberFormat().format(p.credits) %></td>
+                  <td class="py-2 px-3 text-right space-x-1">
+                    <button type="button" class="bg-blue-500 text-white px-3 py-1 rounded text-xs" onclick="editPackage('<%= p._id %>', '<%= p.name %>', '<%= p.price %>', '<%= p.credits %>')">Edit</button>
+                    <form action="/admin/package/delete" method="POST" class="inline">
+                      <input type="hidden" name="packageId" value="<%= p._id %>">
+                      <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded text-xs" onclick="return confirm('Delete package <%= p.name %>?')">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <p class="text-gray-400 text-sm">No packages found.</p>
+      <% } %>
+    </div>
+
+    <!-- ─── API Logs ──────────────────────────── -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h3 class="text-lg font-bold mb-4">📋 API Call Logs (last 100)</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+          <thead>
+            <tr class="bg-gray-50 text-left">
+              <th class="py-2 px-2 border-b">Time</th>
+              <th class="py-2 px-2 border-b">User</th>
+              <th class="py-2 px-2 border-b">Endpoint</th>
+              <th class="py-2 px-2 border-b">Method</th>
+              <th class="py-2 px-2 border-b">IP</th>
+              <th class="py-2 px-2 border-b">Cost</th>
+              <th class="py-2 px-2 border-b">Remaining</th>
+              <th class="py-2 px-2 border-b">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% logs.forEach(function(log) { %>
+              <tr class="hover:bg-gray-50 border-b">
+                <td class="py-1 px-2 text-gray-500"><%= new Date(log.createdAt).toLocaleString() %></td>
+                <td class="py-1 px-2 font-medium"><%= log.email || '-' %></td>
+                <td class="py-1 px-2 font-mono"><%= log.endpoint %></td>
+                <td class="py-1 px-2"><span class="px-1 py-0.5 rounded text-white text-xs <%= log.method === 'POST' ? 'bg-blue-500' : 'bg-green-500' %>"><%= log.method %></span></td>
+                <td class="py-1 px-2 text-gray-500"><%= log.ip || '-' %></td>
+                <td class="py-1 px-2 text-center"><%= log.creditsCost %></td>
+                <td class="py-1 px-2 text-center"><%= log.creditsRemaining %></td>
+                <td class="py-1 px-2">
+                  <% if (log.success) { %>
+                    <span class="text-green-600">✅</span>
+                  <% } else { %>
+                    <span class="text-red-600">❌ <%= log.statusCode %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+            <% if (logs.length === 0) { %>
+              <tr><td colspan="8" class="py-4 text-center text-gray-400">No API calls logged yet.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden form for password change -->
+  <form id="passwordForm" action="/admin/change-password" method="POST" style="display:none;">
+    <input type="hidden" name="userId" id="pwUserId">
+    <input type="hidden" name="newPassword" id="pwNewPassword">
+  </form>
+
+  <script>
+    function promptPassword(userId, email) {
+      const pw = prompt('Enter new password for ' + email + ' (min 6 chars):');
+      if (!pw || pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
+      document.getElementById('pwUserId').value = userId;
+      document.getElementById('pwNewPassword').value = pw;
+      document.getElementById('passwordForm').submit();
+    }
+
+    function editPackage(id, name, price, credits) {
+      document.getElementById('editPackageId').value = id;
+      document.getElementById('editPackageName').value = name;
+      document.getElementById('editPackagePrice').value = price;
+      document.getElementById('editPackageCredits').value = credits;
+      document.getElementById('btnSavePackage').innerText = 'Save';
+      document.getElementById('btnCancelEdit').classList.remove('hidden');
+    }
+
+    function cancelEditPackage() {
+      document.getElementById('editPackageId').value = '';
+      document.getElementById('editPackageName').value = '';
+      document.getElementById('editPackagePrice').value = '';
+      document.getElementById('editPackageCredits').value = '';
+      document.getElementById('btnSavePackage').innerText = 'Add';
+      document.getElementById('btnCancelEdit').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

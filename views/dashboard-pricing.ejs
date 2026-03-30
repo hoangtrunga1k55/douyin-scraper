@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Buy Credits - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen pb-10">
+  <div class="max-w-4xl mx-auto px-4 pt-12">
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+      <h2 class="text-3xl font-extrabold text-gray-800">Nạp Theo Tự Chọn</h2>
+      <div class="mt-4 md:mt-0 space-x-3">
+        <a href="/dashboard" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">&larr; Back to Dashboard</a>
+      </div>
+    </div>
+
+    <% if (typeof successMsg !== 'undefined' && successMsg) { %>
+      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+        <%= successMsg %>
+      </div>
+    <% } %>
+
+    <!-- Simplified QR Section -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 flex flex-col md:flex-row">
+      
+      <!-- QR Image Side -->
+      <div class="bg-gray-50 border-r border-gray-200 p-8 flex flex-col items-center justify-center shrink-0 w-full md:w-1/2">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Quét mã QR để thanh toán</h3>
+        
+        <!-- Static QR Image -->
+        <img id="qr-image" src="/images/myqr.jpg" alt="Mã QR Chuyển Khoản" class="w-64 h-auto object-contain mb-4 bg-white p-2 rounded shadow-sm border border-gray-200">
+      </div>
+      
+      <!-- Payment Details Side -->
+      <div class="p-8 w-full md:w-1/2 flex flex-col justify-center">
+        <h4 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Xác nhận chuyển khoản</h4>
+        
+        <p class="text-gray-600 mb-6 text-sm">Quét mã QR bên cạnh để thanh toán theo đúng thông tin trên ảnh QR. Sau khi thanh toán xong, vui lòng nhấn nút xác nhận bên dưới.</p>
+
+        <!-- Submit Form -->
+        <form action="/dashboard/notify-payment" method="POST" class="mt-auto">
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all text-lg mb-2">
+            ✅ Tôi đã chuyển khoản
+          </button>
+          <p class="text-xs text-gray-500 mt-2 text-center">Admin sẽ nhận thông báo Telegram và cộng credit cho bạn sớm nhất.</p>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Package Grid (For Reference Only) -->
+    <div class="mt-12">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Các gói tham khảo</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <% if (packages && packages.length > 0) { %>
+          <% packages.forEach((pkg) => { %>
+            <div class="bg-white rounded-xl shadow p-5 border border-gray-200">
+              <h3 class="text-md font-bold text-gray-800 mb-1"><%= pkg.name %></h3>
+              <div class="text-blue-600 font-extrabold text-2xl mb-2">
+                <%= new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(pkg.price) %>
+              </div>
+              <div class="text-gray-600 flex items-center space-x-1">
+                <span>🪙</span>
+                <span class="font-bold"><%= new Intl.NumberFormat().format(pkg.credits) %></span>
+                <span class="text-sm">Credits</span>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

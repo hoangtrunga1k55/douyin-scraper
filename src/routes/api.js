@@ -1,31 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const douyinService = require('../services/douyin');
 const downloaderService = require('../services/downloader');
 const logger = require('../utils/logger');
+const authApi = require('../middleware/authApi');
+const deductCredits = require('../middleware/deductCredits');
+const { addJob, getJobStatus } = require('../services/queue');
+
+// ─── Queue-based Endpoints ───────────────────────────────────
 
 /**
  * POST /api/video/parse
- * Parse a single Douyin video URL and return video details
+ * Queue a video parse job. Returns jobId.
  */
-router.post('/video/parse', async (req, res, next) => {
+router.post('/video/parse', authApi, deductCredits('credit_video_parse', 10), async (req, res, next) => {
   try {
     const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });
 
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required field: url',
-      });
-    }
+    logger.info(`[API] Queue video parse: ${url}`);
+    const jobId = await addJob('video.parse', { url });
 
-    logger.info(`[API] Parse video: ${url}`);
-    const result = await douyinService.parseVideo(url);
-
-    res.json({
-      success: true,
-      data: result,
-    });
+    res.json({ success: true, data: { jobId, message: 'Job queued. Poll GET /api/job/:jobId for result.' } });
   } catch (err) {
     next(err);
   }
@@ -33,75 +28,35 @@ router.post('/video/parse', async (req, res, next) => {
 
 /**
  * POST /api/video/download
- * Download a single Douyin video (streams back as mp4)
+ * Queue a video parse, then client downloads from the returned URL
  */
-router.post('/video/download', async (req, res, next) => {
+router.post('/video/download', authApi, deductCredits('credit_video_download', 10), async (req, res, next) => {
   try {
     const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });
 
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required field: url',
-      });
-    }
+    logger.info(`[API] Queue video download: ${url}`);
+    const jobId = await addJob('video.parse', { url });
 
-    logger.info(`[API] Download video: ${url}`);
-
-    // Parse video to get download URL
-    const videoInfo = await douyinService.parseVideo(url);
-
-    if (!videoInfo.download_url) {
-      return res.status(404).json({
-        success: false,
-        error: 'Could not find video download URL',
-      });
-    }
-
-    // Set filename from title
-    const filename = videoInfo.title
-      ? `${videoInfo.title.substring(0, 50)}.mp4`
-      : `douyin_${videoInfo.video_id}.mp4`;
-
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(filename)}"`
-    );
-
-    await downloaderService.streamVideoToResponse(videoInfo.download_url, res);
+    res.json({ success: true, data: { jobId, message: 'Job queued. Poll GET /api/job/:jobId for download URL.' } });
   } catch (err) {
-    // If headers are already sent, we can't send JSON error
-    if (res.headersSent) {
-      logger.error(`Stream error: ${err.message}`);
-      res.end();
-    } else {
-      next(err);
-    }
+    next(err);
   }
 });
 
 /**
  * POST /api/channel/videos
- * Get list of videos from a Douyin user/channel
+ * Queue a channel videos fetch job. Returns jobId.
  */
-router.post('/channel/videos', async (req, res, next) => {
+router.post('/channel/videos', authApi, deductCredits('credit_channel_videos', 20), async (req, res, next) => {
   try {
     const { url, count = 20, cursor = 0 } = req.body;
+    if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });
 
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required field: url',
-      });
-    }
+    logger.info(`[API] Queue channel videos: ${url}, count: ${count}`);
+    const jobId = await addJob('channel.videos', { url, count, cursor });
 
-    logger.info(`[API] Get channel videos: ${url}, count: ${count}`);
-    const result = await douyinService.getUserVideos(url, count, cursor);
-
-    res.json({
-      success: true,
-      data: result,
-    });
+    res.json({ success: true, data: { jobId, message: 'Job queued. Poll GET /api/job/:jobId for result.' } });
   } catch (err) {
     next(err);
   }
@@ -109,175 +64,122 @@ router.post('/channel/videos', async (req, res, next) => {
 
 /**
  * POST /api/channel/download
- * Start batch download of videos from a channel
+ * Start batch download (kept synchronous as it already has its own task system)
  */
-router.post('/channel/download', async (req, res, next) => {
+router.post('/channel/download', authApi, deductCredits('credit_channel_download', 20), async (req, res, next) => {
   try {
     const { url, count = 10 } = req.body;
-
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required field: url',
-      });
-    }
-
-    if (count > 100) {
-      return res.status(400).json({
-        success: false,
-        error: 'Count must be <= 100',
-      });
-    }
+    if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });
+    if (count > 100) return res.status(400).json({ success: false, error: 'Count must be <= 100' });
 
     logger.info(`[API] Batch download: ${url}, count: ${count}`);
     const result = await downloaderService.startBatchDownload(url, count);
 
-    res.json({
-      success: true,
-      data: result,
-    });
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }
 });
 
+// ─── Job Status Endpoint ─────────────────────────────────────
+
 /**
- * GET /api/task/:taskId
- * Check status of a batch download task
+ * GET /api/job/:jobId
+ * Check status of a queued job
  */
+router.get('/job/:jobId', async (req, res) => {
+  try {
+    const status = await getJobStatus(req.params.jobId);
+    if (!status) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+    res.json({ success: true, data: status });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── Legacy Task Endpoints ───────────────────────────────────
+
 router.get('/task/:taskId', (req, res) => {
   const task = downloaderService.getTaskStatus(req.params.taskId);
-
-  if (!task) {
-    return res.status(404).json({
-      success: false,
-      error: 'Task not found',
-    });
-  }
-
-  res.json({
-    success: true,
-    data: task,
-  });
+  if (!task) return res.status(404).json({ success: false, error: 'Task not found' });
+  res.json({ success: true, data: task });
 });
 
-/**
- * GET /api/tasks
- * List all download tasks
- */
 router.get('/tasks', (_req, res) => {
   const tasks = downloaderService.listTasks();
-  res.json({
-    success: true,
-    data: tasks,
-  });
+  res.json({ success: true, data: tasks });
 });
 
-/**
- * GET /api/health
- * Health check endpoint
- */
+// ─── Health Check ────────────────────────────────────────────
+
 router.get('/health', (_req, res) => {
-  res.json({
-    success: true,
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ─── Free Public Endpoint (queue-based) ──────────────────────
+
+/**
+ * POST /api/free/parse
+ * Parse a Douyin video URL (free, queued)
+ */
+router.post('/free/parse', async (req, res, next) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });
+
+    logger.info(`[FREE] Queue parse video: ${url}`);
+    const jobId = await addJob('video.parse', { url });
+
+    res.json({ success: true, data: { jobId } });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── Auth / Cookie Management ────────────────────────────────
 
-/**
- * GET /api/auth/status
- * Check if Douyin session/cookies are valid
- */
+const douyinService = require('../services/douyin');
+
 router.get('/auth/status', async (_req, res, next) => {
   try {
-    logger.info('[API] Checking auth status...');
     const status = await douyinService.checkSession();
-    res.json({
-      success: true,
-      data: status,
-    });
-  } catch (err) {
-    next(err);
-  }
+    res.json({ success: true, data: status });
+  } catch (err) { next(err); }
 });
 
-/**
- * GET /api/auth/login
- * Open a visible browser for user to log in to Douyin.
- * Cookies are auto-saved to persistent profile.
- */
 router.get('/auth/login', async (_req, res, next) => {
   try {
-    logger.info('[API] Opening login browser...');
     const { browser, page } = await douyinService.openLoginBrowser();
-
-    res.json({
-      success: true,
-      message:
-        'Trình duyệt đã mở. Hãy đăng nhập Douyin, sau đó gọi GET /api/auth/confirm để lưu cookie.',
-    });
-
-    // Store references for confirm endpoint
+    res.json({ success: true, message: 'Browser opened. Login then call GET /api/auth/confirm.' });
     router._loginBrowser = browser;
     router._loginPage = page;
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-/**
- * GET /api/auth/confirm
- * Confirm login is done, close the visible browser. Cookies are already saved.
- */
 router.get('/auth/confirm', async (_req, res, next) => {
   try {
     if (router._loginBrowser) {
       await router._loginBrowser.close();
       router._loginBrowser = null;
       router._loginPage = null;
-      logger.info('[API] Login browser closed. Cookies saved to profile.');
     }
-
-    // Verify session
     const status = await douyinService.checkSession();
-    res.json({
-      success: true,
-      message: 'Đăng nhập thành công! Cookie đã được lưu tự động.',
-      data: status,
-    });
-  } catch (err) {
-    next(err);
-  }
+    res.json({ success: true, message: 'Login confirmed. Cookies saved.', data: status });
+  } catch (err) { next(err); }
 });
 
-/**
- * POST /api/auth/inject
- * Migrate cookies from .env DOUYIN_COOKIE into persistent browser profile
- */
 router.post('/auth/inject', async (_req, res, next) => {
   try {
-    logger.info('[API] Injecting .env cookies into browser profile...');
     const result = await douyinService.injectEnvCookies();
     if (result) {
       const status = await douyinService.checkSession();
-      res.json({
-        success: true,
-        message: 'Cookie từ .env đã được import vào browser profile.',
-        data: status,
-      });
+      res.json({ success: true, message: 'Cookies imported.', data: status });
     } else {
-      res.status(400).json({
-        success: false,
-        error: 'DOUYIN_COOKIE trong .env trống hoặc chưa được cấu hình.',
-      });
+      res.status(400).json({ success: false, error: 'DOUYIN_COOKIE not configured.' });
     }
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 module.exports = router;
-

@@ -7,13 +7,33 @@ const apiRoutes = require('./routes/api');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const { closeBrowser, injectEnvCookies, checkSession } = require('./services/douyin');
+const douyinService = require('./services/douyin');
+const { startWorker } = require('./services/queue');
+const connectDB = require('./models/index');
+const session = require('express-session');
+const webRoutes = require('./routes/web');
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
+
+// View Engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../views'));
 
 // ─── Middleware ───────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session Middleware (for web dashboard)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'douyin-session-secret-12345',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 1 day
+}));
 
 // Rate limiting: 60 requests per minute per IP
 const limiter = rateLimit({
@@ -28,34 +48,29 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// IP ban & anti-spam guard
+const { ipGuard } = require('./middleware/ipGuard');
+app.use('/api/', ipGuard);
+
 // Serve downloaded files statically
 app.use(
   '/downloads',
   express.static(path.resolve(config.downloadDir))
 );
 
+// Serve public static assets (like images)
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
 // ─── Routes ──────────────────────────────────────────────────
+// Web Dashboard Routes
+app.use('/', webRoutes);
+
+// API Routes
 app.use('/api', apiRoutes);
 
-// Root info endpoint
+// Root - Public landing page
 app.get('/', (_req, res) => {
-  res.json({
-    name: 'Douyin Video Downloader API',
-    version: '1.0.0',
-    endpoints: {
-      'POST /api/video/parse': 'Parse a Douyin video URL and get video info',
-      'POST /api/video/download': 'Download a Douyin video (returns mp4 stream)',
-      'POST /api/channel/videos': 'Get list of videos from a user channel',
-      'POST /api/channel/download': 'Start batch download of channel videos',
-      'GET /api/task/:taskId': 'Check batch download task status',
-      'GET /api/tasks': 'List all download tasks',
-      'GET /api/auth/login': 'Open browser to login Douyin (auto-save cookies)',
-      'GET /api/auth/confirm': 'Confirm login done & close browser',
-      'GET /api/auth/status': 'Check cookie/session status',
-      'POST /api/auth/inject': 'Import .env cookies into browser profile',
-      'GET /api/health': 'Health check',
-    },
-  });
+  res.render('home');
 });
 
 // ─── Error Handler ───────────────────────────────────────────
@@ -66,6 +81,9 @@ const server = app.listen(config.port, async () => {
   logger.info(`🚀 Douyin Video Downloader API running on port ${config.port}`);
   logger.info(`📋 API docs: http://localhost:${config.port}/`);
   logger.info(`📁 Browser profile: ${config.browserDataDir}`);
+
+  // Start queue worker
+  startWorker(douyinService);
 
   // Auto-inject .env cookies into persistent profile on first start
   try {

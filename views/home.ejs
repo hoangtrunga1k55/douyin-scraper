@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Douyin Video Downloader - Free Download</title>
+  <meta name="description" content="Download Douyin/TikTok China videos for free. No watermark, no login required.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    nav {
+      width: 100%;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1100px;
+    }
+    nav .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+    nav .logo span { background: linear-gradient(90deg, #fe2c55, #25f4ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    nav .nav-links a {
+      color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; margin-left: 1.5rem;
+      transition: color 0.2s;
+    }
+    nav .nav-links a:hover { color: #fff; }
+
+    .hero { text-align: center; margin-top: 6vh; padding: 0 1.5rem; }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; line-height: 1.2; margin-bottom: 1rem;
+    }
+    .hero h1 span { background: linear-gradient(90deg, #fe2c55, #25f4ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 1.1rem; color: rgba(255,255,255,0.6); max-width: 500px; margin: 0 auto 2.5rem; }
+
+    .download-box {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px); border-radius: 20px; padding: 2.5rem;
+      max-width: 640px; width: 100%; margin: 0 auto;
+    }
+    .input-group { display: flex; gap: 0.75rem; }
+    .input-group input {
+      flex: 1; padding: 0.9rem 1.2rem; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08);
+      color: #fff; font-size: 1rem; outline: none; transition: border-color 0.2s;
+    }
+    .input-group input::placeholder { color: rgba(255,255,255,0.35); }
+    .input-group input:focus { border-color: #fe2c55; }
+    .input-group button {
+      padding: 0.9rem 1.8rem; border-radius: 12px; border: none;
+      background: linear-gradient(135deg, #fe2c55, #d91a40); color: #fff;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s; white-space: nowrap;
+    }
+    .input-group button:hover { opacity: 0.9; }
+    .input-group button:active { transform: scale(0.97); }
+    .input-group button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status-msg {
+      margin-top: 1rem; padding: 0.8rem 1rem; border-radius: 10px;
+      font-size: 0.9rem; display: none;
+    }
+    .status-msg.error { display: block; background: rgba(254,44,85,0.15); color: #ff6b8a; border: 1px solid rgba(254,44,85,0.3); }
+    .status-msg.loading { display: block; background: rgba(37,244,238,0.1); color: #25f4ee; border: 1px solid rgba(37,244,238,0.2); }
+
+    .result-card {
+      display: none; margin-top: 1.5rem;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; overflow: hidden;
+    }
+    .result-card.show { display: block; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    .result-card .thumb-row { display: flex; gap: 1rem; padding: 1.2rem; }
+    .result-card .thumb-row img { width: 120px; height: 160px; object-fit: cover; border-radius: 10px; flex-shrink: 0; }
+    .result-card .info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .result-card .info .title { font-weight: 600; font-size: 0.95rem; line-height: 1.4; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .result-card .info .meta { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+    .result-card .info .meta span { margin-right: 1rem; }
+
+    .result-card .actions { padding: 0 1.2rem 1.2rem; display: flex; gap: 0.6rem; }
+    .result-card .actions a {
+      flex: 1; text-align: center; padding: 0.7rem; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: opacity 0.2s;
+    }
+    .result-card .actions a:hover { opacity: 0.85; }
+    .btn-primary { background: linear-gradient(135deg, #fe2c55, #d91a40); color: #fff; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.2rem; max-width: 640px; width: 100%; margin: 3rem auto 2rem; padding: 0 1.5rem;
+    }
+    .feature {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 1.5rem; text-align: center;
+    }
+    .feature .icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
+    .feature h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .feature p { font-size: 0.8rem; color: rgba(255,255,255,0.5); line-height: 1.5; }
+
+    footer { margin-top: auto; padding: 2rem; text-align: center; font-size: 0.8rem; color: rgba(255,255,255,0.3); }
+
+    @media (max-width: 500px) {
+      .input-group { flex-direction: column; }
+      .result-card .thumb-row { flex-direction: column; align-items: center; text-align: center; }
+      .result-card .thumb-row img { width: 100%; height: 200px; }
+    }
+
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(37,244,238,0.3); border-top-color: #25f4ee; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo"><span>Douyin</span> Downloader</div>
+    <div class="nav-links">
+      <a href="/pricing">Pricing</a>
+      <a href="https://www.facebook.com/ztrungflyz" target="_blank">Contact</a>
+      <a href="/docs">API Docs</a>
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>Download <span>Douyin</span> Videos<br>For Free</h1>
+    <p>Paste a Douyin video link and download it instantly. No watermark, no login required.</p>
+  </section>
+
+  <div class="download-box">
+    <div class="input-group">
+      <input type="text" id="videoUrl" placeholder="Paste Douyin video link here..." autocomplete="off">
+      <button id="parseBtn" onclick="parseVideo()">Download</button>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+    <div class="result-card" id="resultCard">
+      <div class="thumb-row">
+        <img id="thumb" src="" alt="Video thumbnail">
+        <div class="info">
+          <div class="title" id="videoTitle"></div>
+          <div class="meta">
+            <span id="videoAuthor"></span>
+            <span id="videoDuration"></span>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <a href="#" id="downloadBtn" class="btn-primary" target="_blank">⬇ Download MP4</a>
+        <a href="#" id="playBtn" class="btn-secondary" target="_blank">▶ Play Online</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="icon">⚡</div>
+      <h3>Fast & Free</h3>
+      <p>No registration needed. Just paste and download.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🎬</div>
+      <h3>HD Quality</h3>
+      <p>Download videos in original high quality.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔒</div>
+      <h3>Safe & Private</h3>
+      <p>We don't store any of your data or videos.</p>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 Douyin Video Downloader. For personal use only.<br>
+    <span style="font-size: 0.85rem; margin-top: 5px; display: inline-block;">
+      Support/Contact: <a href="https://www.facebook.com/ztrungflyz" target="_blank" style="color: #25f4ee; text-decoration: none;">Facebook Admin</a>
+    </span>
+  </footer>
+
+  <script>
+    const statusMsg = document.getElementById('statusMsg');
+    const resultCard = document.getElementById('resultCard');
+    let pollTimer = null;
+
+    async function parseVideo() {
+      const url = document.getElementById('videoUrl').value.trim();
+      if (!url) { showStatus('Please paste a valid Douyin video link.', 'error'); return; }
+
+      const btn = document.getElementById('parseBtn');
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+      resultCard.classList.remove('show');
+      showStatus('<span class="spinner"></span> Submitting to queue...', 'loading');
+
+      try {
+        const resp = await fetch('/api/free/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await resp.json();
+
+        if (!data.success) {
+          showStatus(data.error || 'Failed to submit job.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Download';
+          return;
+        }
+
+        const jobId = data.data.jobId;
+        showStatus('<span class="spinner"></span> Processing video... Please wait.', 'loading');
+        pollForResult(jobId, btn);
+      } catch (err) {
+        showStatus('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Download';
+      }
+    }
+
+    function pollForResult(jobId, btn) {
+      if (pollTimer) clearInterval(pollTimer);
+
+      pollTimer = setInterval(async () => {
+        try {
+          const resp = await fetch('/api/job/' + jobId);
+          const data = await resp.json();
+
+          if (!data.success) return;
+
+          const job = data.data;
+
+          if (job.state === 'completed') {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            const v = job.result;
+
+            document.getElementById('thumb').src = v.cover || '';
+            document.getElementById('videoTitle').textContent = v.title || 'Untitled';
+            document.getElementById('videoAuthor').textContent = v.author ? '👤 ' + v.author : '';
+            document.getElementById('videoDuration').textContent = v.duration ? '⏱ ' + v.duration + 's' : '';
+            document.getElementById('downloadBtn').href = v.download_url || '#';
+            document.getElementById('playBtn').href = v.play_url || v.download_url || '#';
+
+            statusMsg.className = 'status-msg';
+            resultCard.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Download';
+          } else if (job.state === 'failed') {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            showStatus('Failed: ' + (job.error || 'Unknown error'), 'error');
+            btn.disabled = false;
+            btn.textContent = 'Download';
+          }
+          // else still waiting/active — keep polling
+        } catch (err) {
+          // Network hiccup, keep trying
+        }
+      }, 1500); // Poll every 1.5s
+    }
+
+    function showStatus(msg, type) {
+      statusMsg.innerHTML = msg;
+      statusMsg.className = 'status-msg ' + type;
+    }
+
+    document.getElementById('videoUrl').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') parseVideo();
+    });
+  </script>
+</body>
+</html>

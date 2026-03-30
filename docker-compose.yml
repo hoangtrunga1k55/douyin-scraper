@@ -3,6 +3,11 @@ services:
     build: .
     container_name: douyin-downloader
     restart: unless-stopped
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "3000:3000"
     # Port 3000 and 6080 will only be routed internally by Nginx
     volumes:
       - ./downloads:/app/downloads
@@ -12,10 +17,28 @@ services:
       - NODE_ENV=production
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - DISPLAY=:99
+      - MONGO_URI=mongodb://mongo:27017/douyindb
+      - REDIS_HOST=redis
     # Required for Puppeteer
     security_opt:
       - seccomp=unconfined
     shm_size: '512mb'
+    networks:
+      - shared_proxy
+
+  mongo:
+    image: mongo:latest
+    container_name: douyin-mongo
+    restart: unless-stopped
+    volumes:
+      - ./mongo_data:/data/db
+    networks:
+      - shared_proxy
+
+  redis:
+    image: redis:7-alpine
+    container_name: douyin-redis
+    restart: unless-stopped
     networks:
       - shared_proxy
 

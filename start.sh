@@ -2,8 +2,11 @@
 set -e
 
 echo "Starting X virtual framebuffer (Xvfb)..."
+# Clean up stale lock files from previous runs
+rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
 # Start Xvfb: target display :99, resolution 1280x800, 24-bit color
 Xvfb :99 -screen 0 1280x800x24 &
+sleep 1
 export DISPLAY=:99
 
 echo "Starting Fluxbox (window manager)..."

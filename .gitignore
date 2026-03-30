@@ -18,6 +18,10 @@ browser_data/
 logs/
 *.log
 
+# Database Output
+mongo_data/
+redis_data/
+
 # Debug output (if any screenshot traces are saved by puppeteer)
 debug_*.json
 debug_*.png

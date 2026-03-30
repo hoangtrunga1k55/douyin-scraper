@@ -3,6 +3,7 @@ const path = require('path');
 
 const config = {
   port: parseInt(process.env.PORT, 10) || 3000,
+  mongoUri: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/douyindb',
 
   // Douyin cookie - optional, persistent browser profile is preferred
   douyinCookie: process.env.DOUYIN_COOKIE || '',

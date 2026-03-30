@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Docs - Douyin Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; min-height: 100vh; background: #0e1117; color: #c9d1d9; }
+    nav { padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; max-width: 900px; margin: 0 auto; }
+    nav .logo { font-size: 1.2rem; font-weight: 800; color: #fff; text-decoration: none; }
+    nav .logo span { background: linear-gradient(90deg, #fe2c55, #25f4ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    nav .nav-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.85rem; margin-left: 1.2rem; transition: color 0.2s; }
+    nav .nav-links a:hover { color: #fff; }
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    h1 { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: #8b949e; font-size: 1rem; margin-bottom: 2.5rem; }
+    .section { margin-bottom: 2.5rem; }
+    h2 { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid #21262d; }
+    p { font-size: 0.9rem; line-height: 1.7; margin-bottom: 0.8rem; }
+    .endpoint { background: #161b22; border: 1px solid #30363d; border-radius: 10px; margin-bottom: 1.5rem; overflow: hidden; }
+    .endpoint-header { padding: 0.8rem 1rem; display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid #21262d; }
+    .method { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 6px; text-transform: uppercase; }
+    .method.post { background: rgba(56,139,253,0.15); color: #58a6ff; }
+    .method.get { background: rgba(63,185,80,0.15); color: #3fb950; }
+    .endpoint-path { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #e6edf3; }
+    .endpoint-desc { padding: 0.6rem 1rem; font-size: 0.85rem; color: #8b949e; }
+    .code-block { position: relative; background: #0d1117; border-top: 1px solid #21262d; padding: 1rem; overflow-x: auto; }
+    .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.6; color: #c9d1d9; white-space: pre; margin: 0; }
+    .code-block .copy-btn { position: absolute; top: 0.6rem; right: 0.6rem; background: #21262d; border: 1px solid #30363d; color: #8b949e; font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; transition: color 0.2s; }
+    .code-block .copy-btn:hover { color: #fff; }
+    .response-label { padding: 0.5rem 1rem 0; font-size: 0.75rem; font-weight: 600; color: #3fb950; text-transform: uppercase; letter-spacing: 0.5px; background: #0d1117; border-top: 1px solid #21262d; }
+    .response-block { background: #0d1117; padding: 0.6rem 1rem 1rem; overflow-x: auto; }
+    .response-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; line-height: 1.5; color: #7ee787; margin: 0; }
+    .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem; }
+    .badge.auth { background: rgba(254,44,85,0.15); color: #fe2c55; }
+    .badge.free { background: rgba(63,185,80,0.15); color: #3fb950; }
+    .note { background: rgba(56,139,253,0.1); border: 1px solid rgba(56,139,253,0.3); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.85rem; color: #58a6ff; margin-bottom: 1.5rem; }
+    .note code { background: rgba(56,139,253,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
+    .flow-note { background: rgba(254,44,85,0.08); border: 1px solid rgba(254,44,85,0.2); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.85rem; color: #ff6b8a; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/" class="logo"><span>Douyin</span> Downloader</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/login">Login</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1>API Documentation</h1>
+    <p class="subtitle">Use your API token to integrate Douyin video downloading into your applications.</p>
+
+    <div class="note">
+      🔑 <strong>Authentication:</strong> Pass your API token as <code>Authorization: Bearer &lt;your_token&gt;</code>.<br>
+      Get your token from the <a href="/dashboard" style="color:#58a6ff">Dashboard</a>.
+    </div>
+
+    <div class="flow-note">
+      🔄 <strong>Queue Flow:</strong> All endpoints return a <code>jobId</code>. Poll <code>GET /api/job/:jobId</code> until <code>state</code> is <code>completed</code> or <code>failed</code>.
+    </div>
+
+    <!-- ─── Video Parse ─────────────────────────── -->
+    <div class="section">
+      <h2>Video Endpoints</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/video/parse</span>
+          <span class="badge auth">🔒 Auth + credits</span>
+        </div>
+        <div class="endpoint-desc">Parse a Douyin video URL. Returns a jobId to poll for video info.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://your-domain.com/api/video/parse \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "1",
+    "message": "Job queued. Poll GET /api/job/:jobId for result."
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/video/download</span>
+          <span class="badge auth">🔒 Auth + credits</span>
+        </div>
+        <div class="endpoint-desc">Queue a video download job. Poll the jobId to get the download URL.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://your-domain.com/api/video/download \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "2",
+    "message": "Job queued. Poll GET /api/job/:jobId for download URL."
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Channel ─────────────────────────────── -->
+    <div class="section">
+      <h2>Channel Endpoints</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/channel/videos</span>
+          <span class="badge auth">🔒 Auth + credits</span>
+        </div>
+        <div class="endpoint-desc">Get a list of videos from a Douyin user/channel profile.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://your-domain.com/api/channel/videos \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.douyin.com/user/xxxxx", "count": 20}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "3",
+    "message": "Job queued. Poll GET /api/job/:jobId for result."
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/channel/download</span>
+          <span class="badge auth">🔒 Auth + credits</span>
+        </div>
+        <div class="endpoint-desc">Start a batch download of videos from a channel. Returns a task ID for tracking.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://your-domain.com/api/channel/download \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.douyin.com/user/xxxxx", "count": 10}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "taskId": "abc123",
+    "status": "started",
+    "total": 10
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Job Polling ─────────────────────────── -->
+    <div class="section">
+      <h2>Job Polling</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/job/:jobId</span>
+          <span class="badge free">🔓 No auth</span>
+        </div>
+        <div class="endpoint-desc">Poll a queued job for its status and result. Keep polling until <code>state</code> is <code>completed</code> or <code>failed</code>.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl https://your-domain.com/api/job/1</pre>
+        </div>
+        <div class="response-label">⏳ Waiting / Active</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "id": "1",
+    "state": "active",
+    "data": { "type": "video.parse", "url": "https://v.douyin.com/xxxxx" }
+  }
+}</pre>
+        </div>
+        <div class="response-label">✅ Completed</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "id": "1",
+    "state": "completed",
+    "result": {
+      "video_id": "7328xxxxx",
+      "title": "Video title here",
+      "author": "username",
+      "cover": "https://p3-sign.douyinpic.com/...",
+      "download_url": "https://www.douyin.com/aweme/...",
+      "play_url": "https://www.douyin.com/aweme/...",
+      "duration": 15
+    }
+  }
+}</pre>
+        </div>
+        <div class="response-label">❌ Failed</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "id": "1",
+    "state": "failed",
+    "error": "Could not extract video ID from URL"
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Free ────────────────────────────────── -->
+    <div class="section">
+      <h2>Free Endpoint</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/free/parse</span>
+          <span class="badge free">🔓 No auth</span>
+        </div>
+        <div class="endpoint-desc">Parse a Douyin video URL (free, no token or credits needed). Returns a jobId to poll.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://your-domain.com/api/free/parse \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "5"
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Error Responses ─────────────────────── -->
+    <div class="section">
+      <h2>Error Responses</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post" style="background:rgba(254,44,85,0.15); color:#fe2c55;">401</span>
+          <span class="endpoint-path">Unauthorized</span>
+        </div>
+        <div class="response-block">
+<pre>{
+  "success": false,
+  "error": "Unauthorized: Missing or invalid token format. Use \"Bearer &lt;token&gt;\""
+}</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post" style="background:rgba(254,44,85,0.15); color:#fe2c55;">402</span>
+          <span class="endpoint-path">Insufficient Credits</span>
+        </div>
+        <div class="response-block">
+<pre>{
+  "success": false,
+  "error": "Payment Required: Insufficient credits. You need 10 credits, but have 0."
+}</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post" style="background:rgba(254,44,85,0.15); color:#fe2c55;">403</span>
+          <span class="endpoint-path">Account Banned</span>
+        </div>
+        <div class="response-block">
+<pre>{
+  "success": false,
+  "error": "Forbidden: Your account has been banned. Contact admin."
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Health ──────────────────────────────── -->
+    <div class="section">
+      <h2>Health Check</h2>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/health</span>
+          <span class="badge free">🔓 No auth</span>
+        </div>
+        <div class="endpoint-desc">Check if the API server is running.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl https://your-domain.com/api/health</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "status": "ok",
+  "timestamp": "2026-03-30T09:00:00.000Z"
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function copyCode(btn) {
+      const pre = btn.parentElement.querySelector('pre');
+      navigator.clipboard.writeText(pre.textContent).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      });
+    }
+  </script>
+</body>
+</html>
