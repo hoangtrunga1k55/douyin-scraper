@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Douyin Video Downloader - Free Download</title>
-  <meta name="description" content="Download Douyin/TikTok China videos for free. No watermark, no login required.">
+  <title>Tải Video Douyin - Miễn Phí</title>
+  <meta name="description" content="Tải video Douyin/TikTok Trung Quốc miễn phí. Không logo, không cần đăng nhập.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -123,23 +123,23 @@
   <nav>
     <div class="logo"><span>Douyin</span> Downloader</div>
     <div class="nav-links">
-      <a href="/pricing">Pricing</a>
-      <a href="https://www.facebook.com/ztrungflyz" target="_blank">Contact</a>
-      <a href="/docs">API Docs</a>
-      <a href="/login">Login</a>
-      <a href="/register">Register</a>
+      <a href="/pricing">Bảng Giá</a>
+      <a href="https://www.facebook.com/ztrungflyz" target="_blank">Liên Hệ</a>
+      <a href="/docs">Tài Liệu API</a>
+      <a href="/login">Đăng Nhập</a>
+      <a href="/register">Đăng Ký</a>
     </div>
   </nav>
 
   <section class="hero">
-    <h1>Download <span>Douyin</span> Videos<br>For Free</h1>
-    <p>Paste a Douyin video link and download it instantly. No watermark, no login required.</p>
+    <h1>Tải Video <span>Douyin</span><br>Miễn Phí</h1>
+    <p>Dán link video Douyin và tải về ngay lập tức. Không chứa logo watermark, không yêu cầu đăng nhập.</p>
   </section>
 
   <div class="download-box">
     <div class="input-group">
-      <input type="text" id="videoUrl" placeholder="Paste Douyin video link here..." autocomplete="off">
-      <button id="parseBtn" onclick="parseVideo()">Download</button>
+      <input type="text" id="videoUrl" placeholder="Dán link video Douyin vào đây..." autocomplete="off">
+      <button id="parseBtn" onclick="parseVideo()">Tải Về</button>
     </div>
     <div class="status-msg" id="statusMsg"></div>
     <div class="result-card" id="resultCard">
@@ -154,8 +154,8 @@
         </div>
       </div>
       <div class="actions">
-        <a href="#" id="downloadBtn" class="btn-primary" target="_blank">⬇ Download MP4</a>
-        <a href="#" id="playBtn" class="btn-secondary" target="_blank">▶ Play Online</a>
+        <a href="#" id="downloadBtn" class="btn-primary" target="_blank">⬇ Tải MP4</a>
+        <a href="#" id="playBtn" class="btn-secondary" target="_blank">▶ Phát Online</a>
       </div>
     </div>
   </div>
@@ -163,25 +163,25 @@
   <div class="features">
     <div class="feature">
       <div class="icon">⚡</div>
-      <h3>Fast & Free</h3>
-      <p>No registration needed. Just paste and download.</p>
+      <h3>Nhanh & Miễn Phí</h3>
+      <p>Không cần đăng ký. Chỉ việc dán link và tải về ngay phút mốt.</p>
     </div>
     <div class="feature">
       <div class="icon">🎬</div>
-      <h3>HD Quality</h3>
-      <p>Download videos in original high quality.</p>
+      <h3>Chất Lượng HD</h3>
+      <p>Tải xuống video với chất lượng gốc, sắc nét tuyệt đối.</p>
     </div>
     <div class="feature">
       <div class="icon">🔒</div>
-      <h3>Safe & Private</h3>
-      <p>We don't store any of your data or videos.</p>
+      <h3>An Toàn & Riêng Tư</h3>
+      <p>Chúng tôi không lưu trữ bất kỳ dữ liệu cá nhân hay video nào của bạn.</p>
     </div>
   </div>
 
   <footer>
-    &copy; 2026 Douyin Video Downloader. For personal use only.<br>
+    &copy; 2026 Douyin Video Downloader. Dành cho mục đích cá nhân.<br>
     <span style="font-size: 0.85rem; margin-top: 5px; display: inline-block;">
-      Support/Contact: <a href="https://www.facebook.com/ztrungflyz" target="_blank" style="color: #25f4ee; text-decoration: none;">Facebook Admin</a>
+      Hỗ trợ / Liên hệ: <a href="https://www.facebook.com/ztrungflyz" target="_blank" style="color: #25f4ee; text-decoration: none;">Facebook Admin</a>
     </span>
   </footer>
 
@@ -192,13 +192,13 @@
 
     async function parseVideo() {
       const url = document.getElementById('videoUrl').value.trim();
-      if (!url) { showStatus('Please paste a valid Douyin video link.', 'error'); return; }
+      if (!url) { showStatus('Vui lòng dán một đường link video Douyin hơp lệ.', 'error'); return; }
 
       const btn = document.getElementById('parseBtn');
       btn.disabled = true;
-      btn.textContent = 'Processing...';
+      btn.textContent = 'Đang Xử Lý...';
       resultCard.classList.remove('show');
-      showStatus('<span class="spinner"></span> Submitting to queue...', 'loading');
+      showStatus('<span class="spinner"></span> Đang đưa vào hàng đợi...', 'loading');
 
       try {
         const resp = await fetch('/api/free/parse', {
@@ -209,19 +209,19 @@
         const data = await resp.json();
 
         if (!data.success) {
-          showStatus(data.error || 'Failed to submit job.', 'error');
+          showStatus(data.error || 'Lỗi hệ thống. Không thể tạo tác vụ mới.', 'error');
           btn.disabled = false;
-          btn.textContent = 'Download';
+          btn.textContent = 'Tải Về';
           return;
         }
 
         const jobId = data.data.jobId;
-        showStatus('<span class="spinner"></span> Processing video... Please wait.', 'loading');
+        showStatus('<span class="spinner"></span> Đang phân tích video... Vui lòng đợi trong giây lát.', 'loading');
         pollForResult(jobId, btn);
       } catch (err) {
-        showStatus('Network error. Please try again.', 'error');
+        showStatus('Lỗi kết nối mạng hoặc máy chủ. Vui lòng thử lại.', 'error');
         btn.disabled = false;
-        btn.textContent = 'Download';
+        btn.textContent = 'Tải Về';
       }
     }
 
@@ -243,7 +243,7 @@
             const v = job.result;
 
             document.getElementById('thumb').src = v.cover || '';
-            document.getElementById('videoTitle').textContent = v.title || 'Untitled';
+            document.getElementById('videoTitle').textContent = v.title || 'Không có tiêu đề';
             document.getElementById('videoAuthor').textContent = v.author ? '👤 ' + v.author : '';
             document.getElementById('videoDuration').textContent = v.duration ? '⏱ ' + v.duration + 's' : '';
             document.getElementById('downloadBtn').href = v.download_url || '#';
@@ -252,13 +252,13 @@
             statusMsg.className = 'status-msg';
             resultCard.classList.add('show');
             btn.disabled = false;
-            btn.textContent = 'Download';
+            btn.textContent = 'Tải Về';
           } else if (job.state === 'failed') {
             clearInterval(pollTimer);
             pollTimer = null;
-            showStatus('Failed: ' + (job.error || 'Unknown error'), 'error');
+            showStatus('Thất bại: ' + (job.error || 'Lỗi không xác định, vui lòng tải lại trang hoặc đợi lát thử lại'), 'error');
             btn.disabled = false;
-            btn.textContent = 'Download';
+            btn.textContent = 'Tải Về';
           }
           // else still waiting/active — keep polling
         } catch (err) {

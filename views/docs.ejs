@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Docs - Douyin Downloader</title>
+  <title>Tài Liệu API - Douyin Downloader</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -46,23 +46,23 @@
   <nav>
     <a href="/" class="logo"><span>Douyin</span> Downloader</a>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/login">Login</a>
+      <a href="/">Trang Chủ</a>
+      <a href="/dashboard">Bảng Điều Khiển</a>
+      <a href="/login">Đăng Nhập</a>
     </div>
   </nav>
 
   <div class="container">
-    <h1>API Documentation</h1>
-    <p class="subtitle">Use your API token to integrate Douyin video downloading into your applications.</p>
+    <h1>Tài Liệu Cung Cấp API</h1>
+    <p class="subtitle">Sử dụng API Token của bạn để tự động hóa việc lưu video Douyin vào ứng dụng từ xa.</p>
 
     <div class="note">
-      🔑 <strong>Authentication:</strong> Pass your API token as <code>Authorization: Bearer &lt;your_token&gt;</code>.<br>
-      Get your token from the <a href="/dashboard" style="color:#58a6ff">Dashboard</a>.
+      🔑 <strong>Xác thực:</strong> Truyền API Token của bạn nằm trong Header gửi đi là <code>Authorization: Bearer &lt;your_token&gt;</code>.<br>
+      Lấy Token của bạn tại trang <a href="/dashboard" style="color:#58a6ff">Bảng Điều Khiển Quản Lý</a>.
     </div>
 
     <div class="flow-note">
-      🔄 <strong>Queue Flow:</strong> All endpoints return a <code>jobId</code>. Poll <code>GET /api/job/:jobId</code> until <code>state</code> is <code>completed</code> or <code>failed</code>.
+      🔄 <strong>Luồng xếp hàng (Queue):</strong> Tất cả endpoint đều trả về 1 mã <code>jobId</code>. Bạn dùng mã này và liên tục poll gọi hàm <code>GET /api/job/:jobId</code> cho tới khi <code>state</code> là <code>completed</code> (hoàn tất) hoặc <code>failed</code> (lỗi).
     </div>
 
     <!-- ─── Video Parse ─────────────────────────── -->

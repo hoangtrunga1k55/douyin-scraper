@@ -1,6 +1,7 @@
 const { Queue, Worker } = require('bullmq');
 const IORedis = require('ioredis');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
 
 const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 const REDIS_PORT = parseInt(process.env.REDIS_PORT, 10) || 6379;
@@ -57,7 +58,9 @@ function startWorker(douyinService) {
 
 // ─── Helper: Add job and return job ID ───────────────────────
 async function addJob(type, data, opts = {}) {
+  const jobId = crypto.randomUUID();
   const job = await douyinQueue.add(type, { type, ...data }, {
+    jobId,
     removeOnComplete: { age: 3600 }, // Keep completed jobs for 1 hour
     removeOnFail: { age: 3600 },
     attempts: 2,
