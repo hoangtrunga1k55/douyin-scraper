@@ -242,12 +242,17 @@
             pollTimer = null;
             const v = job.result;
 
-            document.getElementById('thumb').src = v.cover || '';
+            // Route all Douyin CDN URLs through our proxy to bypass 403
+            const proxyUrl = (u) => u ? '/api/proxy/media?url=' + encodeURIComponent(u) : '';
+            const proxyDl  = (u) => u ? '/api/proxy/media?dl=1&url=' + encodeURIComponent(u) : '#';
+
+            // API returns: cover_url, download_url, author.nickname
+            document.getElementById('thumb').src = proxyUrl(v.cover_url);
             document.getElementById('videoTitle').textContent = v.title || 'Không có tiêu đề';
-            document.getElementById('videoAuthor').textContent = v.author ? '👤 ' + v.author : '';
+            document.getElementById('videoAuthor').textContent = v.author?.nickname ? '👤 ' + v.author.nickname : '';
             document.getElementById('videoDuration').textContent = v.duration ? '⏱ ' + v.duration + 's' : '';
-            document.getElementById('downloadBtn').href = v.download_url || '#';
-            document.getElementById('playBtn').href = v.play_url || v.download_url || '#';
+            document.getElementById('downloadBtn').href = proxyDl(v.download_url);
+            document.getElementById('playBtn').href = proxyUrl(v.download_url);
 
             statusMsg.className = 'status-msg';
             resultCard.classList.add('show');

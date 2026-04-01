@@ -182,4 +182,68 @@ router.post('/auth/inject', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ─── Media Proxy (bypass Douyin anti-hotlink 403) ────────────
+
+/**
+ * GET /api/proxy/media?url=<encoded_douyin_cdn_url>&dl=1
+ * Streams Douyin CDN content through our server.
+ * Query params:
+ *   url – the Douyin CDN URL (required)
+ *   dl  – if "1", sets Content-Disposition to force download
+ */
+router.get('/proxy/media', async (req, res) => {
+  try {
+    const targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).json({ success: false, error: 'Missing url param' });
+
+    // Validate URL format
+    let parsed;
+    try { parsed = new URL(targetUrl); } catch { return res.status(400).json({ success: false, error: 'Invalid URL' }); }
+
+    // Only allow http/https
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).json({ success: false, error: 'Invalid protocol' });
+    }
+
+    logger.info(`[Proxy] Streaming: ${parsed.hostname}${parsed.pathname.substring(0, 60)}...`);
+
+    const upstream = await fetch(targetUrl, {
+      headers: {
+        'Referer': 'https://www.douyin.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      redirect: 'follow',
+    });
+
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ success: false, error: `Upstream returned ${upstream.status}` });
+    }
+
+    // Forward content headers
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    const cl = upstream.headers.get('content-length');
+    if (cl) res.setHeader('Content-Length', cl);
+
+    // Force download if requested
+    if (req.query.dl === '1') {
+      const ext = ct && ct.includes('video') ? 'mp4' : 'jpg';
+      res.setHeader('Content-Disposition', `attachment; filename="douyin_video.${ext}"`);
+    }
+
+    // Cache for 1 hour
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+
+    // Stream the body
+    const { Readable } = require('stream');
+    const nodeStream = Readable.fromWeb(upstream.body);
+    nodeStream.pipe(res);
+  } catch (err) {
+    logger.error(`[Proxy] Error: ${err.message}`);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: 'Proxy error' });
+    }
+  }
+});
+
 module.exports = router;
