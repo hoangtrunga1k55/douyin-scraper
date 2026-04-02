@@ -50,11 +50,11 @@ router.post('/video/download', authApi, deductCredits('credit_video_download', 1
  */
 router.post('/channel/videos', authApi, deductCredits('credit_channel_videos', 20), async (req, res, next) => {
   try {
-    const { url, count = 20, cursor = 0 } = req.body;
+    const { url, count = 20, cursor = 0, since = null } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });
 
-    logger.info(`[API] Queue channel videos: ${url}, count: ${count}`);
-    const jobId = await addJob('channel.videos', { url, count, cursor });
+    logger.info(`[API] Queue channel videos: ${url}, count: ${count}, since: ${since || 'all'}`);
+    const jobId = await addJob('channel.videos', { url, count, cursor, since });
 
     res.json({ success: true, data: { jobId, message: 'Job queued. Poll GET /api/job/:jobId for result.' } });
   } catch (err) {

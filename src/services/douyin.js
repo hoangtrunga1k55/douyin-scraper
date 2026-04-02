@@ -466,10 +466,41 @@ function formatVideoDetail(detail) {
 }
 
 /**
+ * Parse 'since' parameter into a Unix timestamp (seconds).
+ * Supports: 'today', 'yesterday', 'YYYY-MM-DD', or unix timestamp.
+ */
+function parseSinceDate(since) {
+  if (!since) return null;
+
+  if (since === 'today') {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+  }
+  if (since === 'yesterday') {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime() / 1000;
+  }
+  // Unix timestamp (seconds)
+  if (/^\d{10,}$/.test(String(since))) {
+    return parseInt(since, 10);
+  }
+  // Date string 'YYYY-MM-DD'
+  const parsed = new Date(since);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.getTime() / 1000;
+  }
+  return null;
+}
+
+/**
  * Get list of videos from a Douyin user profile.
  * Strategy: Direct API call with browser cookies (bypasses captcha).
+ * @param {string} inputUrl - User profile URL
+ * @param {number} count - Number of videos to fetch
+ * @param {number} cursor - Pagination cursor
+ * @param {string|null} since - Filter: only return videos created on or after this date ('today', 'YYYY-MM-DD', unix timestamp)
  */
-async function getUserVideos(inputUrl, count = 20, cursor = 0) {
+async function getUserVideos(inputUrl, count = 20, cursor = 0, since = null) {
   let url = inputUrl.trim();
 
   if (isShortLink(url)) {
@@ -484,7 +515,8 @@ async function getUserVideos(inputUrl, count = 20, cursor = 0) {
     );
   }
 
-  logger.info(`Fetching videos for user: ${secUid}, count: ${count}, cursor: ${cursor}`);
+  const sinceTs = parseSinceDate(since);
+  logger.info(`Fetching videos for user: ${secUid}, count: ${count}, cursor: ${cursor}${sinceTs ? ', since: ' + new Date(sinceTs * 1000).toISOString() : ''}`);
 
   // Get cookies from persistent browser profile
   const cookieStr = await getCookieString();
@@ -496,13 +528,25 @@ async function getUserVideos(inputUrl, count = 20, cursor = 0) {
 
   // Direct API call (bypasses captcha entirely)
   try {
-    return await getUserVideosViaAPI(secUid, count, cursor, cookieStr);
+    return await getUserVideosViaAPI(secUid, count, cursor, cookieStr, sinceTs);
   } catch (err) {
     logger.warn(`Direct API failed: ${err.message}`);
   }
 
   // Fallback: try Puppeteer page loading
-  return await getUserVideosViaPuppeteer(secUid, url, count, cursor);
+  const result = await getUserVideosViaPuppeteer(secUid, url, count, cursor);
+
+  // Apply since filter to fallback results too
+  if (sinceTs && result.videos) {
+    result.videos = result.videos.filter(v => {
+      if (!v.create_time) return true;
+      const videoTs = new Date(v.create_time).getTime() / 1000;
+      return videoTs >= sinceTs;
+    });
+    result.total = result.videos.length;
+  }
+
+  return result;
 }
 
 /**
@@ -523,8 +567,9 @@ async function getCookieString() {
 /**
  * Fetch user videos via browser-context API call.
  * Auto-paginates until the requested count is reached.
+ * @param {number|null} sinceTs - If provided, stop fetching and filter out videos older than this Unix timestamp
  */
-async function getUserVideosViaAPI(secUid, count, cursor, cookieStr) {
+async function getUserVideosViaAPI(secUid, count, cursor, cookieStr, sinceTs = null) {
   const browser = await getBrowser();
   const page = await browser.newPage();
 
@@ -546,8 +591,9 @@ async function getUserVideosViaAPI(secUid, count, cursor, cookieStr) {
     let currentCursor = cursor;
     let hasMore = true;
     const maxPages = 10; // Safety limit
+    let reachedOlderThanSince = false;
 
-    for (let pageNum = 0; pageNum < maxPages && allPosts.length < count && hasMore; pageNum++) {
+    for (let pageNum = 0; pageNum < maxPages && allPosts.length < count && hasMore && !reachedOlderThanSince; pageNum++) {
       logger.info(`Calling user posts API (page ${pageNum + 1}, cursor: ${currentCursor}, have: ${allPosts.length}/${count})`);
 
       const apiResult = await page.evaluate(async (params) => {
@@ -595,19 +641,39 @@ async function getUserVideosViaAPI(secUid, count, cursor, cookieStr) {
         throw new Error('API returned empty video list');
       }
 
-      allPosts.push(...awemeList);
+      // If since filter is active, check if we've gone past the date
+      if (sinceTs) {
+        for (const item of awemeList) {
+          if (item.create_time && item.create_time < sinceTs) {
+            reachedOlderThanSince = true;
+            logger.info(`Reached video older than since filter (${new Date(item.create_time * 1000).toISOString()}), stopping pagination`);
+            break;
+          }
+          allPosts.push(item);
+        }
+      } else {
+        allPosts.push(...awemeList);
+      }
+
       hasMore = !!data.has_more;
       currentCursor = data.max_cursor || 0;
 
       logger.info(`Got ${awemeList.length} videos (total: ${allPosts.length}/${count})`);
 
       // Small delay between pages to avoid rate limiting
-      if (allPosts.length < count && hasMore) {
+      if (allPosts.length < count && hasMore && !reachedOlderThanSince) {
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
-    const videos = allPosts.slice(0, count).map((item) => formatVideoDetail(item));
+    // Apply since filter to all collected posts (in case some slipped through)
+    let filteredPosts = allPosts;
+    if (sinceTs) {
+      filteredPosts = allPosts.filter(item => !item.create_time || item.create_time >= sinceTs);
+      logger.info(`Since filter applied: ${allPosts.length} -> ${filteredPosts.length} videos`);
+    }
+
+    const videos = filteredPosts.slice(0, count).map((item) => formatVideoDetail(item));
 
     let userInfo = {};
     if (allPosts[0]?.author) {
@@ -624,9 +690,10 @@ async function getUserVideosViaAPI(secUid, count, cursor, cookieStr) {
     return {
       user: userInfo,
       videos,
-      has_more: hasMore && allPosts.length >= count,
+      has_more: hasMore && filteredPosts.length >= count && !reachedOlderThanSince,
       cursor: currentCursor,
       total: videos.length,
+      filter: sinceTs ? { since: new Date(sinceTs * 1000).toISOString() } : undefined,
     };
   } finally {
     await page.close();

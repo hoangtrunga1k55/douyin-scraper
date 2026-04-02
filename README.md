@@ -2,17 +2,21 @@
 
 Backend API server để download video Douyin (抖音) từ link video đơn lẻ hoặc từ kênh/user profile.
 
+**Base URL:** `https://thq-solution-tools.io.vn`
+
 ## Tính năng
 
 - 🎬 **Parse video**: Lấy thông tin chi tiết video (title, author, statistics, download URL không watermark)
 - ⬇️ **Download video**: Stream video trực tiếp qua API (không cần lưu trên server)
 - 📋 **Danh sách video kênh**: Lấy danh sách video từ user profile
 - 📦 **Batch download**: Download hàng loạt video từ kênh với task tracking
-- 🔄 **Task management**: Theo dõi tiến trình batch download
+- 🔄 **Job queue**: Tất cả request được xử lý qua hàng đợi, polling kết quả qua jobId (UUID)
+- 🔐 **Authentication**: API Token + Credit system
 
 ## Yêu cầu
 
 - Node.js >= 18
+- MongoDB + Redis
 - Chromium (tự động cài bởi Puppeteer)
 - Cookie Douyin hợp lệ
 
@@ -55,16 +59,133 @@ npm start
 npm run dev
 ```
 
-Server sẽ chạy tại `http://localhost:3000`
+Server sẽ chạy tại `https://thq-solution-tools.io.vn`
+
+## Authentication
+
+Tất cả API endpoint (trừ `/api/free/*` và `/api/health`) yêu cầu API Token trong header:
+
+```
+Authorization: Bearer <your_api_token>
+```
 
 ## API Endpoints
 
 ### 1. Parse Video
 
-Lấy thông tin video từ URL:
+Lấy thông tin video từ URL (queue-based, trả về jobId):
 
 ```bash
-curl -X POST http://localhost:3000/api/video/parse \
+curl -X POST https://thq-solution-tools.io.vn/api/video/parse \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -d '{"url": "https://www.douyin.com/video/7000000000000000000"}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "message": "Job queued. Poll GET /api/job/:jobId for result."
+  }
+}
+```
+
+### 2. Download Video
+
+Queue parse video, sau đó download từ URL trả về:
+
+```bash
+curl -X POST https://thq-solution-tools.io.vn/api/video/download \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -d '{"url": "https://www.douyin.com/video/7000000000000000000"}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "jobId": "f7e6d5c4-b3a2-1098-7654-321fedcba098",
+    "message": "Job queued. Poll GET /api/job/:jobId for download URL."
+  }
+}
+```
+
+### 3. Kiểm tra kết quả Job
+
+Polling kết quả job bằng jobId (UUID):
+
+```bash
+curl https://thq-solution-tools.io.vn/api/job/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+**Response (đang xử lý):**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "active",
+    "progress": null
+  }
+}
+```
+
+**Response (hoàn thành):**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "completed",
+    "result": {
+      "video_id": "7000000000000000000",
+      "title": "Video title",
+      "author": { "nickname": "Author", "uid": "...", "sec_uid": "..." },
+      "download_url": "https://...",
+      "cover_url": "https://...",
+      "duration": 30,
+      "statistics": { "likes": 1000, "comments": 50, "shares": 10 }
+    }
+  }
+}
+```
+
+### 4. Danh sách video từ kênh
+
+```bash
+curl -X POST https://thq-solution-tools.io.vn/api/channel/videos \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -d '{"url": "https://www.douyin.com/user/MS4wLjABAAAAxxxxxx", "count": 20, "cursor": 0}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "jobId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "message": "Job queued. Poll GET /api/job/:jobId for result."
+  }
+}
+```
+
+### 5. Batch download từ kênh
+
+```bash
+curl -X POST https://thq-solution-tools.io.vn/api/channel/download \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -d '{"url": "https://www.douyin.com/user/MS4wLjABAAAAxxxxxx", "count": 10}'
+```
+
+### 6. Free Parse (không cần auth)
+
+```bash
+curl -X POST https://thq-solution-tools.io.vn/api/free/parse \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.douyin.com/video/7000000000000000000"}'
 ```
@@ -74,52 +195,49 @@ curl -X POST http://localhost:3000/api/video/parse \
 {
   "success": true,
   "data": {
-    "video_id": "7000000000000000000",
-    "title": "Video title",
-    "author": { "nickname": "Author", "uid": "...", "sec_uid": "..." },
-    "download_url": "https://...",
-    "cover_url": "https://...",
-    "duration": 30,
-    "statistics": { "likes": 1000, "comments": 50, "shares": 10 }
+    "jobId": "c3d4e5f6-a7b8-9012-cdef-234567890123"
   }
 }
 ```
 
-### 2. Download Video
-
-Download video trực tiếp (trả về file mp4):
+### 7. Media Proxy (bypass Douyin anti-hotlink)
 
 ```bash
-curl -X POST http://localhost:3000/api/video/download \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.douyin.com/video/7000000000000000000"}' \
-  -o video.mp4
+# Stream media
+curl "https://thq-solution-tools.io.vn/api/proxy/media?url=ENCODED_DOUYIN_CDN_URL"
+
+# Force download
+curl "https://thq-solution-tools.io.vn/api/proxy/media?url=ENCODED_DOUYIN_CDN_URL&dl=1" -o video.mp4
 ```
 
-### 3. Danh sách video từ kênh
+### 8. Health Check
 
 ```bash
-curl -X POST http://localhost:3000/api/channel/videos \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.douyin.com/user/MS4wLjABAAAAxxxxxx", "count": 20, "cursor": 0}'
+curl https://thq-solution-tools.io.vn/api/health
 ```
 
-### 4. Batch download từ kênh
+### 9. Auth / Session Management
 
 ```bash
-# Bắt đầu batch download
-curl -X POST http://localhost:3000/api/channel/download \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.douyin.com/user/MS4wLjABAAAAxxxxxx", "count": 10}'
+# Kiểm tra trạng thái login
+curl https://thq-solution-tools.io.vn/api/auth/status
 
-# Kiểm tra tiến trình
-curl http://localhost:3000/api/task/{task_id}
+# Mở browser để login (quét QR)
+curl https://thq-solution-tools.io.vn/api/auth/login
+
+# Xác nhận đã login xong
+curl https://thq-solution-tools.io.vn/api/auth/confirm
+
+# Import cookie từ .env
+curl -X POST https://thq-solution-tools.io.vn/api/auth/inject
 ```
 
-### 5. Health Check
+## Workflow sử dụng API
 
-```bash
-curl http://localhost:3000/api/health
+```
+1. POST /api/video/parse        →  Nhận jobId (UUID)
+2. GET  /api/job/{jobId}         →  Poll cho đến khi status = "completed"
+3. Lấy download_url từ result   →  Download video qua /api/proxy/media
 ```
 
 ## Hỗ trợ URL
@@ -141,20 +259,39 @@ curl http://localhost:3000/api/health
 
 ```
 douyin-downloader/
-├── .env                     # Cấu hình (cookie, port, ...)
+├── .env                         # Cấu hình (cookie, port, ...)
 ├── package.json
 ├── README.md
+├── Dockerfile
+├── docker-compose.yml           # App + Mongo + Redis
+├── start.sh                     # Khởi tạo Xvfb + VNC + Node.js
+├── docker/
+│   └── nginx-bridge/
+│       ├── docker-compose.yaml  # Nginx reverse proxy (SSL)
+│       └── conf.d/sites.conf    # Nginx config
 ├── src/
-│   ├── server.js            # Entry point Express server
-│   ├── config.js            # Configuration
-│   ├── routes/api.js        # API routes
+│   ├── server.js                # Entry point Express server
+│   ├── config.js                # Configuration
+│   ├── routes/
+│   │   ├── api.js               # API routes
+│   │   └── web.js               # Web routes
 │   ├── services/
-│   │   ├── douyin.js        # Douyin scraping service
-│   │   └── downloader.js    # Video download service
+│   │   ├── douyin.js            # Douyin scraping service
+│   │   ├── downloader.js        # Video download service
+│   │   └── queue.js             # BullMQ job queue
+│   ├── models/
+│   │   ├── User.js              # User model (auth + credits)
+│   │   ├── Package.js           # Credit packages
+│   │   └── ApiLog.js            # API usage logging
 │   ├── middleware/
-│   │   └── errorHandler.js  # Error handler
+│   │   ├── authApi.js           # API token auth
+│   │   ├── authWeb.js           # Web session auth
+│   │   ├── deductCredits.js     # Credit deduction
+│   │   └── errorHandler.js      # Error handler
 │   └── utils/
-│       ├── logger.js        # Winston logger
-│       └── helpers.js       # URL parsing, utilities
-└── downloads/               # Downloaded videos
+│       ├── logger.js            # Winston logger
+│       └── helpers.js           # URL parsing, utilities
+├── views/                       # EJS templates
+├── public/                      # Static assets
+└── downloads/                   # Downloaded videos
 ```

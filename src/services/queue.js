@@ -20,7 +20,7 @@ let worker = null;
 
 function startWorker(douyinService) {
   worker = new Worker('douyin-jobs', async (job) => {
-    const { type, url, count, cursor } = job.data;
+    const { type, url, count, cursor, since } = job.data;
     logger.info(`[Queue] Processing job ${job.id}: ${type} - ${url}`);
 
     switch (type) {
@@ -29,7 +29,7 @@ function startWorker(douyinService) {
         return result;
       }
       case 'channel.videos': {
-        const result = await douyinService.getUserVideos(url, count || 20, cursor || 0);
+        const result = await douyinService.getUserVideos(url, count || 20, cursor || 0, since);
         return result;
       }
       default:
