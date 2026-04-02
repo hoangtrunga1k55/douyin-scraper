@@ -6,11 +6,18 @@ const logger = require('../utils/logger');
 const ipHits = new Map(); // ip -> { count, windowStart }
 
 function getClientIp(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+  let ip = req.headers['cf-connecting-ip']
+    || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
     || req.headers['x-real-ip']
     || req.ip
     || req.connection?.remoteAddress
     || 'unknown';
+
+  // Normalize IPv4-mapped IPv6 address (e.g. ::ffff:192.168.1.1 -> 192.168.1.1)
+  if (ip.startsWith('::ffff:')) {
+    ip = ip.substring(7);
+  }
+  return ip;
 }
 
 /**
