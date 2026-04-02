@@ -18,6 +18,9 @@ connectDB();
 
 const app = express();
 
+// Trust reverse proxy (Nginx) to get real IPs for rate limiters
+app.set('trust proxy', 1);
+
 // View Engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));

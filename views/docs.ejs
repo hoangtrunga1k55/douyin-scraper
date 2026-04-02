@@ -37,6 +37,7 @@
     .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem; }
     .badge.auth { background: rgba(254,44,85,0.15); color: #fe2c55; }
     .badge.free { background: rgba(63,185,80,0.15); color: #3fb950; }
+    .badge.credits { background: rgba(255,213,79,0.15); color: #ffd54f; font-family: 'JetBrains Mono', monospace; }
     .note { background: rgba(56,139,253,0.1); border: 1px solid rgba(56,139,253,0.3); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.85rem; color: #58a6ff; margin-bottom: 1.5rem; }
     .note code { background: rgba(56,139,253,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
     .flow-note { background: rgba(254,44,85,0.08); border: 1px solid rgba(254,44,85,0.2); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.85rem; color: #ff6b8a; margin-bottom: 1.5rem; }
@@ -65,6 +66,46 @@
       🔄 <strong>Luồng xếp hàng (Queue):</strong> Tất cả endpoint đều trả về 1 mã <code>jobId</code>. Bạn dùng mã này và liên tục poll gọi hàm <code>GET /api/job/:jobId</code> cho tới khi <code>state</code> là <code>completed</code> (hoàn tất) hoặc <code>failed</code> (lỗi).
     </div>
 
+    <div class="section">
+      <h2>💰 Bảng Phí Credits</h2>
+      <table style="width:100%; border-collapse:collapse; font-size:0.85rem; margin-bottom:1rem;">
+        <thead>
+          <tr style="border-bottom:2px solid #30363d; text-align:left;">
+            <th style="padding:0.6rem 1rem; color:#fff;">Endpoint</th>
+            <th style="padding:0.6rem 1rem; color:#ffd54f; text-align:center;">Credits / request</th>
+            <th style="padding:0.6rem 1rem; color:#8b949e;">Mô tả</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/video/parse</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">10</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Parse thông tin video</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/video/download</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">10</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Lấy link tải video</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/channel/videos</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">20</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Lấy danh sách video kênh</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/channel/download</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">20</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Batch download video kênh</td>
+          </tr>
+          <tr>
+            <td style="padding:0.5rem 1rem;"><code>POST /api/free/parse</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#3fb950; font-weight:600;">Miễn phí</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Parse video (không cần auth)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- ─── Video Parse ─────────────────────────── -->
     <div class="section">
       <h2>Video Endpoints</h2>
@@ -73,12 +114,13 @@
         <div class="endpoint-header">
           <span class="method post">POST</span>
           <span class="endpoint-path">/api/video/parse</span>
-          <span class="badge auth">🔒 Auth + credits</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 10 credits</span>
         </div>
         <div class="endpoint-desc">Parse a Douyin video URL. Returns a jobId to poll for video info.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl -X POST https://your-domain.com/api/video/parse \
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/video/parse \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
@@ -88,7 +130,7 @@
 <pre>{
   "success": true,
   "data": {
-    "jobId": "1",
+    "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "message": "Job queued. Poll GET /api/job/:jobId for result."
   }
 }</pre>
@@ -99,12 +141,13 @@
         <div class="endpoint-header">
           <span class="method post">POST</span>
           <span class="endpoint-path">/api/video/download</span>
-          <span class="badge auth">🔒 Auth + credits</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 10 credits</span>
         </div>
         <div class="endpoint-desc">Queue a video download job. Poll the jobId to get the download URL.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl -X POST https://your-domain.com/api/video/download \
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/video/download \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
@@ -114,7 +157,7 @@
 <pre>{
   "success": true,
   "data": {
-    "jobId": "2",
+    "jobId": "f7e6d5c4-b3a2-1098-7654-321fedcba098",
     "message": "Job queued. Poll GET /api/job/:jobId for download URL."
   }
 }</pre>
@@ -130,22 +173,30 @@
         <div class="endpoint-header">
           <span class="method post">POST</span>
           <span class="endpoint-path">/api/channel/videos</span>
-          <span class="badge auth">🔒 Auth + credits</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 20 credits</span>
         </div>
-        <div class="endpoint-desc">Get a list of videos from a Douyin user/channel profile.</div>
+        <div class="endpoint-desc">Get a list of videos from a Douyin user/channel profile. Sorted by newest first. Supports date filtering with <code>since</code> parameter.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl -X POST https://your-domain.com/api/channel/videos \
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/channel/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://www.douyin.com/user/xxxxx", "count": 20}'</pre>
+  -d '{"url": "https://www.douyin.com/user/xxxxx", "count": 20, "since": "today"}'</pre>
+        </div>
+        <div class="endpoint-desc" style="border-top:1px solid #21262d; padding-top:0.6rem;">
+          📌 <strong>Tham số <code>since</code></strong> (tùy chọn): Chỉ lấy video đăng từ ngày này trở đi.<br>
+          &nbsp;&nbsp;• <code>"today"</code> — Chỉ video hôm nay<br>
+          &nbsp;&nbsp;• <code>"yesterday"</code> — Từ hôm qua<br>
+          &nbsp;&nbsp;• <code>"2026-04-01"</code> — Từ ngày cụ thể<br>
+          &nbsp;&nbsp;• Không truyền — Lấy tất cả
         </div>
         <div class="response-label">✅ Response</div>
         <div class="response-block">
 <pre>{
   "success": true,
   "data": {
-    "jobId": "3",
+    "jobId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
     "message": "Job queued. Poll GET /api/job/:jobId for result."
   }
 }</pre>
@@ -156,12 +207,13 @@
         <div class="endpoint-header">
           <span class="method post">POST</span>
           <span class="endpoint-path">/api/channel/download</span>
-          <span class="badge auth">🔒 Auth + credits</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 20 credits</span>
         </div>
         <div class="endpoint-desc">Start a batch download of videos from a channel. Returns a task ID for tracking.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl -X POST https://your-domain.com/api/channel/download \
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/channel/download \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.douyin.com/user/xxxxx", "count": 10}'</pre>
@@ -171,7 +223,7 @@
 <pre>{
   "success": true,
   "data": {
-    "taskId": "abc123",
+    "taskId": "c3d4e5f6-a7b8-9012-cdef-234567890123",
     "status": "started",
     "total": 10
   }
@@ -193,14 +245,14 @@
         <div class="endpoint-desc">Poll a queued job for its status and result. Keep polling until <code>state</code> is <code>completed</code> or <code>failed</code>.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl https://your-domain.com/api/job/1</pre>
+<pre>curl https://thq-solution-tools.io.vn/api/job/a1b2c3d4-e5f6-7890-abcd-ef1234567890</pre>
         </div>
         <div class="response-label">⏳ Waiting / Active</div>
         <div class="response-block">
 <pre>{
   "success": true,
   "data": {
-    "id": "1",
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "state": "active",
     "data": { "type": "video.parse", "url": "https://v.douyin.com/xxxxx" }
   }
@@ -211,16 +263,17 @@
 <pre>{
   "success": true,
   "data": {
-    "id": "1",
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "state": "completed",
     "result": {
       "video_id": "7328xxxxx",
       "title": "Video title here",
-      "author": "username",
-      "cover": "https://p3-sign.douyinpic.com/...",
+      "author": { "nickname": "username", "uid": "...", "sec_uid": "..." },
+      "cover_url": "https://p3-sign.douyinpic.com/...",
       "download_url": "https://www.douyin.com/aweme/...",
-      "play_url": "https://www.douyin.com/aweme/...",
-      "duration": 15
+      "duration": 15,
+      "create_time": "2026-04-02T10:00:00.000Z",
+      "statistics": { "likes": 1000, "comments": 50, "shares": 10 }
     }
   }
 }</pre>
@@ -230,7 +283,7 @@
 <pre>{
   "success": true,
   "data": {
-    "id": "1",
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "state": "failed",
     "error": "Could not extract video ID from URL"
   }
@@ -252,7 +305,7 @@
         <div class="endpoint-desc">Parse a Douyin video URL (free, no token or credits needed). Returns a jobId to poll.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl -X POST https://your-domain.com/api/free/parse \
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/free/parse \
   -H "Content-Type: application/json" \
   -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
         </div>
@@ -261,7 +314,7 @@
 <pre>{
   "success": true,
   "data": {
-    "jobId": "5"
+    "jobId": "d4e5f6a7-b8c9-0123-def0-456789abcdef"
   }
 }</pre>
         </div>
@@ -324,7 +377,7 @@
         <div class="endpoint-desc">Check if the API server is running.</div>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl https://your-domain.com/api/health</pre>
+<pre>curl https://thq-solution-tools.io.vn/api/health</pre>
         </div>
         <div class="response-label">✅ Response</div>
         <div class="response-block">

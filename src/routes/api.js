@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const downloaderService = require('../services/downloader');
 const logger = require('../utils/logger');
 const authApi = require('../middleware/authApi');
@@ -124,7 +125,18 @@ router.get('/health', (_req, res) => {
  * POST /api/free/parse
  * Parse a Douyin video URL (free, queued)
  */
-router.post('/free/parse', async (req, res, next) => {
+const freeApiLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  max: 10, // Limit each IP to 10 requests per day
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Bạn đã đạt giới hạn dùng thử miễn phí (10 lần / ngày). Vui lòng đợi hoặc đăng ký tài khoản để sử dụng tiếp.',
+  },
+});
+
+router.post('/free/parse', freeApiLimiter, async (req, res, next) => {
   try {
     const { url } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'Missing required field: url' });

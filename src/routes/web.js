@@ -23,69 +23,74 @@ router.get('/pricing', async (req, res) => {
   }
 });
 
-router.get('/login', (req, res) => {
+router.get('/login', async (req, res) => {
   if (req.session.userId) return res.redirect('/dashboard');
-  res.render('login', { error: null });
+  const defaultCredits = await Setting.get('default_user_credits', 200);
+  res.render('login', { error: null, defaultCredits });
 });
 
 router.post('/login', async (req, res) => {
+  let defaultCredits = 200;
   try {
+    defaultCredits = await Setting.get('default_user_credits', 200);
     const { email, password } = req.body;
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     
     if (!user || !(await user.comparePassword(password))) {
-      return res.render('login', { error: 'Invalid email or password' });
+      return res.render('login', { error: 'Invalid email or password', defaultCredits });
     }
 
     if (user.banned) {
-      return res.render('login', { error: 'Your account has been banned. Contact admin.' });
+      return res.render('login', { error: 'Your account has been banned. Contact admin.', defaultCredits });
     }
 
     req.session.userId = user._id;
     res.redirect('/dashboard');
   } catch (err) {
     console.error('Login error:', err);
-    res.render('login', { error: 'Internal Server Error' });
+    res.render('login', { error: 'Internal Server Error', defaultCredits });
   }
 });
 
-router.get('/register', (req, res) => {
+router.get('/register', async (req, res) => {
   if (req.session.userId) return res.redirect('/dashboard');
-  res.render('register', { error: null, success: null });
+  const defaultCredits = await Setting.get('default_user_credits', 200);
+  res.render('register', { error: null, success: null, defaultCredits });
 });
 
 router.post('/register', async (req, res) => {
+  let defaultCredits = 200;
   try {
+    defaultCredits = await Setting.get('default_user_credits', 200);
     const { email, password, confirmPassword } = req.body;
     const trimmedEmail = email.toLowerCase().trim();
 
     // Validate Gmail
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmedEmail)) {
-      return res.render('register', { error: 'Please enter a valid email address', success: null });
+      return res.render('register', { error: 'Please enter a valid email address', success: null, defaultCredits });
     }
     if (password !== confirmPassword) {
-      return res.render('register', { error: 'Passwords do not match', success: null });
+      return res.render('register', { error: 'Passwords do not match', success: null, defaultCredits });
     }
     if (password.length < 6) {
-      return res.render('register', { error: 'Password must be at least 6 characters', success: null });
+      return res.render('register', { error: 'Password must be at least 6 characters', success: null, defaultCredits });
     }
     
     const existing = await User.findOne({ email: trimmedEmail });
     if (existing) {
-      return res.render('register', { error: 'Email already registered', success: null });
+      return res.render('register', { error: 'Email already registered', success: null, defaultCredits });
     }
 
     const userCount = await User.countDocuments();
     const role = userCount === 0 ? 'admin' : 'user';
-    const defaultCredits = await Setting.get('default_user_credits', 200);
 
     const user = new User({ email: trimmedEmail, passwordHash: password, role, credits: defaultCredits });
     await user.save();
 
-    res.render('register', { success: 'Registration successful! Please login.', error: null });
+    res.render('register', { success: `Đăng ký thành công! Bạn đã nhận ${defaultCredits} credits miễn phí. Hãy đăng nhập.`, error: null, defaultCredits });
   } catch (err) {
     console.error('Register error:', err);
-    res.render('register', { error: 'Internal Server Error', success: null });
+    res.render('register', { error: 'Internal Server Error', success: null, defaultCredits });
   }
 });
 

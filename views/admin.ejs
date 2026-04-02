@@ -38,7 +38,7 @@
     <!-- ─── Users Table ───────────────────────── -->
     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
       <h3 class="text-lg font-bold mb-4">👥 Users (<%= users.length %>)</h3>
-      <div class="overflow-x-auto">
+      <div class="overflow-auto max-h-[500px]">
         <table class="min-w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-left">
@@ -116,7 +116,7 @@
       </form>
 
       <% if (bannedIps.length > 0) { %>
-        <div class="overflow-x-auto">
+        <div class="overflow-auto max-h-[400px]">
           <table class="min-w-full text-sm">
             <thead>
               <tr class="bg-red-50 text-left">
@@ -173,7 +173,7 @@
       </form>
 
       <% if (packages && packages.length > 0) { %>
-        <div class="overflow-x-auto">
+        <div class="overflow-auto max-h-[400px]">
           <table class="min-w-full text-sm">
             <thead>
               <tr class="bg-green-50 text-left">
@@ -209,7 +209,7 @@
     <!-- ─── API Logs ──────────────────────────── -->
     <div class="bg-white p-6 rounded-lg shadow-md">
       <h3 class="text-lg font-bold mb-4">📋 API Call Logs (last 100)</h3>
-      <div class="overflow-x-auto">
+      <div class="overflow-auto max-h-[600px]">
         <table class="min-w-full text-xs">
           <thead>
             <tr class="bg-gray-50 text-left">
