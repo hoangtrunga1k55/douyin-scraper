@@ -1,0 +1,16 @@
+services:
+  nginx-public:
+    image: nginx:alpine
+    container_name: nginx-public
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - shared_proxy
+
+networks:
+  shared_proxy:
+    external: true
