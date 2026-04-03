@@ -249,6 +249,77 @@
         </table>
       </div>
     </div>
+
+    <!-- ─── Cấu hình SEO ──────────────────────────── -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <h3 class="text-lg font-bold mb-4">⚙️ Quản Lý SEO (Metadata)</h3>
+      <form action="/admin/seo/save" method="POST" class="mb-6 bg-gray-50 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+        <div class="w-full sm:w-auto flex-1">
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Path (e.g. /login)</label>
+          <input type="text" name="path" id="seoPath" required class="w-full border rounded px-2 py-1" placeholder="/">
+        </div>
+        <div class="w-full sm:w-auto flex-1">
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Title</label>
+          <input type="text" name="title" id="seoTitle" class="w-full border rounded px-2 py-1" placeholder="Douyin Downloader">
+        </div>
+        <div class="w-full sm:w-auto">
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">OG Image URL</label>
+          <input type="text" name="ogImage" id="seoOgImage" class="w-full border rounded px-2 py-1" placeholder="https://...">
+        </div>
+        <div class="w-full flex-none flex gap-4">
+          <div class="flex-1">
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Description</label>
+            <input type="text" name="description" id="seoDesc" class="w-full border rounded px-2 py-1" placeholder="Tải video miễn phí...">
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Keywords</label>
+            <input type="text" name="keywords" id="seoKw" class="w-full border rounded px-2 py-1" placeholder="douyin, tiktok, download">
+          </div>
+        </div>
+        <button type="submit" id="btnSaveSeo" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-6 rounded whitespace-nowrap">Add/Save</button>
+        <button type="button" id="btnCancelSeo" onclick="cancelEditSeo()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-1.5 px-4 rounded hidden whitespace-nowrap">Cancel</button>
+      </form>
+
+      <% if (typeof seoConfigs !== 'undefined' && seoConfigs && seoConfigs.length > 0) { %>
+        <div class="overflow-auto max-h-[400px]">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-100 text-left sticky top-0">
+              <tr>
+                <th class="py-2 px-3 border-b font-medium">Path</th>
+                <th class="py-2 px-3 border-b font-medium">Title</th>
+                <th class="py-2 px-3 border-b font-medium">Description</th>
+                <th class="py-2 px-3 border-b border-r text-center w-24">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% seoConfigs.forEach(function(seo) { %>
+                <tr class="hover:bg-gray-50 border-b">
+                  <td class="py-2 px-3 font-mono font-bold text-blue-600"><%= seo.path %></td>
+                  <td class="py-2 px-3"><%= seo.title %></td>
+                  <td class="py-2 px-3 truncate max-w-xs" title="<%= seo.description %>"><%= seo.description %></td>
+                  <td class="py-2 px-3 border-l text-center space-x-2 whitespace-nowrap">
+                    <button type="button" 
+                      data-id="<%= seo._id %>" 
+                      data-path="<%= seo.path %>" 
+                      data-title="<%= seo.title %>" 
+                      data-desc="<%= seo.description %>" 
+                      data-kw="<%= seo.keywords %>" 
+                      data-ogimg="<%= seo.ogImage %>" 
+                      onclick="editSeoByBtn(this)" class="text-blue-500 hover:text-blue-700">✎</button>
+                    <form action="/admin/seo/delete" method="POST" class="inline" onsubmit="return confirm('Delete SEO mapping for <%= seo.path %>?');">
+                      <input type="hidden" name="id" value="<%= seo._id %>">
+                      <button type="submit" class="text-red-500 hover:text-red-700">❌</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <p class="text-gray-400 text-sm">No SEO configurations found.</p>
+      <% } %>
+    </div>
   </div>
 
   <!-- Hidden form for password change -->
@@ -282,6 +353,30 @@
       document.getElementById('editPackageCredits').value = '';
       document.getElementById('btnSavePackage').innerText = 'Add';
       document.getElementById('btnCancelEdit').classList.add('hidden');
+    }
+
+    function editSeoByBtn(btn) {
+      document.getElementById('seoPath').value = btn.dataset.path || '';
+      document.getElementById('seoPath').readOnly = true;
+      document.getElementById('seoPath').classList.add('bg-gray-200');
+      document.getElementById('seoTitle').value = btn.dataset.title || '';
+      document.getElementById('seoDesc').value = btn.dataset.desc || '';
+      document.getElementById('seoKw').value = btn.dataset.kw || '';
+      document.getElementById('seoOgImage').value = btn.dataset.ogimg || '';
+      document.getElementById('btnSaveSeo').innerText = 'Update';
+      document.getElementById('btnCancelSeo').classList.remove('hidden');
+    }
+
+    function cancelEditSeo() {
+      document.getElementById('seoPath').value = '';
+      document.getElementById('seoPath').readOnly = false;
+      document.getElementById('seoPath').classList.remove('bg-gray-200');
+      document.getElementById('seoTitle').value = '';
+      document.getElementById('seoDesc').value = '';
+      document.getElementById('seoKw').value = '';
+      document.getElementById('seoOgImage').value = '';
+      document.getElementById('btnSaveSeo').innerText = 'Add';
+      document.getElementById('btnCancelSeo').classList.add('hidden');
     }
   </script>
 </body>

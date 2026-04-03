@@ -1,0 +1,17 @@
+<% const t = (typeof seo !== 'undefined' && seo && seo.title) ? seo.title : (typeof defaultTitle !== 'undefined' ? defaultTitle : 'Douyin Downloader'); %>
+<% const d = (typeof seo !== 'undefined' && seo && seo.description) ? seo.description : (typeof defaultDesc !== 'undefined' ? defaultDesc : 'Tải video Douyin/TikTok Trung Quốc miễn phí. Không logo, không cần đăng nhập.'); %>
+<% const k = (typeof seo !== 'undefined' && seo && seo.keywords) ? seo.keywords : (typeof defaultKw !== 'undefined' ? defaultKw : 'douyin, tiktok, downloader, tải video'); %>
+<% const i = (typeof seo !== 'undefined' && seo && seo.ogImage) ? seo.ogImage : (typeof defaultImg !== 'undefined' ? defaultImg : ''); %>
+
+<title><%= t %></title>
+<meta name="description" content="<%= d %>">
+<% if (k) { %><meta name="keywords" content="<%= k %>"><% } %>
+
+<meta property="og:title" content="<%= t %>">
+<meta property="og:description" content="<%= d %>">
+<meta property="og:type" content="website">
+<% if (i) { %><meta property="og:image" content="<%= i %>"><% } %>
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<%= t %>">
+<meta name="twitter:description" content="<%= d %>">
+<% if (i) { %><meta name="twitter:image" content="<%= i %>"><% } %>

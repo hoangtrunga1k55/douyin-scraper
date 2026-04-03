@@ -5,8 +5,21 @@ const Setting = require('../models/Setting');
 const ApiLog = require('../models/ApiLog');
 const BannedIp = require('../models/BannedIp');
 const Package = require('../models/Package');
+const Seo = require('../models/Seo');
 const { authWeb, authAdmin } = require('../middleware/authWeb');
 const { sendTelegramMessage } = require('../utils/telegram');
+
+// ==== GLOBAL SEO MIDDLEWARE ====
+router.use(async (req, res, next) => {
+  if (req.method === 'GET') {
+    try {
+      res.locals.seo = await Seo.findOne({ path: req.path });
+    } catch (e) {
+      console.error('SEO middleware error:', e);
+    }
+  }
+  next();
+});
 
 // ==== PUBLIC ROUTES ====
 
@@ -178,10 +191,11 @@ router.get('/admin', authWeb, authAdmin, async (req, res) => {
     const logs = await ApiLog.find().sort({ createdAt: -1 }).limit(100);
     const bannedIps = await BannedIp.find().sort({ createdAt: -1 });
     const packages = await Package.find().sort({ price: 1 });
+    const seoConfigs = await Seo.find().sort({ path: 1 });
 
-    res.render('admin', { users, settings, logs, bannedIps, packages, error: null, success: null });
+    res.render('admin', { users, settings, logs, bannedIps, packages, seoConfigs, error: null, success: null });
   } catch (err) {
-    res.render('admin', { users: [], settings: [], logs: [], bannedIps: [], packages: [], error: 'Failed to load data', success: null });
+    res.render('admin', { users: [], settings: [], logs: [], bannedIps: [], packages: [], seoConfigs: [], error: 'Failed to load data', success: null });
   }
 });
 
@@ -331,6 +345,35 @@ router.post('/admin/package/delete', authWeb, authAdmin, async (req, res) => {
     res.redirect('/admin');
   } catch (err) {
     console.error(err);
+    res.redirect('/admin');
+  }
+});
+
+// ==== SEO ADMIN ROUTES ====
+router.post('/admin/seo/save', authWeb, authAdmin, async (req, res) => {
+  try {
+    const { path, title, description, keywords, ogImage } = req.body;
+    if (!path || !path.trim()) return res.redirect('/admin');
+
+    await Seo.findOneAndUpdate(
+      { path: path.trim() },
+      { title, description, keywords, ogImage },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.redirect('/admin');
+  } catch (err) {
+    console.error('SEO save error:', err);
+    res.redirect('/admin');
+  }
+});
+
+router.post('/admin/seo/delete', authWeb, authAdmin, async (req, res) => {
+  try {
+    const { id } = req.body;
+    await Seo.findByIdAndDelete(id);
+    res.redirect('/admin');
+  } catch (err) {
+    console.error('SEO delete error:', err);
     res.redirect('/admin');
   }
 });
