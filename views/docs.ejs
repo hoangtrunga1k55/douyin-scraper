@@ -41,6 +41,20 @@
     .note { background: rgba(56,139,253,0.1); border: 1px solid rgba(56,139,253,0.3); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.85rem; color: #58a6ff; margin-bottom: 1.5rem; }
     .note code { background: rgba(56,139,253,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
     .flow-note { background: rgba(254,44,85,0.08); border: 1px solid rgba(254,44,85,0.2); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.85rem; color: #ff6b8a; margin-bottom: 1.5rem; }
+    
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+    th, td { text-align: left; padding: 0.8rem; border-bottom: 1px solid #21262d; font-size: 0.85rem; }
+    th { color: #fff; font-weight: 600; background: rgba(255,255,255,0.02); }
+    td { color: #8b949e; }
+    
+    @media (max-width: 600px) {
+      .container { padding: 1.5rem 1rem 3rem; }
+      h1 { font-size: 1.6rem; }
+      .endpoint-header { flex-direction: column; align-items: flex-start; gap: 0.4rem; padding: 1rem; }
+      .endpoint-path { word-wrap: break-word; word-break: break-all; }
+      .code-block pre, .response-block pre { font-size: 0.75rem; white-space: pre; overflow-x: auto; }
+      .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
   </style>
 </head>
 <body>
@@ -61,7 +75,8 @@
 
     <div class="section">
       <h2>💰 Bảng Phí Credits</h2>
-      <table style="width:100%; border-collapse:collapse; font-size:0.85rem; margin-bottom:1rem;">
+      <div class="table-wrapper">
+        <table>
         <thead>
           <tr style="border-bottom:2px solid #30363d; text-align:left;">
             <th style="padding:0.6rem 1rem; color:#fff;">Endpoint</th>
@@ -96,7 +111,8 @@
             <td style="padding:0.5rem 1rem; color:#8b949e;">Parse video (không cần auth)</td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
 
     <!-- ─── Video Parse ─────────────────────────── -->

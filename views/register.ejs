@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Đăng Ký - Douyin Downloader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
@@ -10,7 +11,7 @@
     <%- include('partials/header', {navTheme: 'light'}) %>
   </div>
   <div class="flex flex-1 items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-lg shadow-md w-96">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
       <h2 class="text-2xl font-bold mb-2 text-center">Đăng Ký</h2>
     <p class="text-center text-green-600 font-semibold text-sm mb-5">🎁 Đăng ký nhận ngay <%= defaultCredits %> credits miễn phí!</p>
     <% if (error) { %>
