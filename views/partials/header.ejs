@@ -1,0 +1,151 @@
+<style>
+.site-navbar {
+  width: 100%;
+  padding: 1.2rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 50;
+  box-sizing: border-box;
+}
+.site-navbar .logo { 
+  font-size: 1.3rem; 
+  font-weight: 800; 
+  letter-spacing: -0.5px; 
+  text-decoration: none;
+  z-index: 52;
+  position: relative;
+}
+.site-navbar.dark-theme .logo { color: #fff; }
+.site-navbar.light-theme .logo { color: #1f2937; }
+.site-navbar .logo span { 
+  background: linear-gradient(90deg, #fe2c55, #25f4ee); 
+  -webkit-background-clip: text; 
+  background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+}
+.site-navbar .nav-links {
+  display: flex;
+  align-items: center;
+}
+.site-navbar .nav-links a {
+  text-decoration: none; 
+  font-size: 0.95rem; 
+  margin-left: 1.5rem;
+  transition: color 0.2s;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+}
+.site-navbar.dark-theme .nav-links a { color: rgba(255,255,255,0.7); }
+.site-navbar.dark-theme .nav-links a:hover { color: #fff; }
+.site-navbar.light-theme .nav-links a { color: #4b5563; }
+.site-navbar.light-theme .nav-links a:hover { color: #1f2937; }
+
+.menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 52;
+  padding: 0.5rem;
+  position: relative;
+}
+.menu-btn svg { width: 28px; height: 28px; transition: stroke 0.2s; }
+.site-navbar.dark-theme .menu-btn svg { stroke: #fff; }
+.site-navbar.light-theme .menu-btn svg { stroke: #1f2937; }
+
+/* Mobile Menu Backdrop */
+.nav-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 49;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .site-navbar {
+    padding: 1rem 1.5rem;
+  }
+  .menu-btn { display: block; }
+  .site-navbar .nav-links {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 260px;
+    height: 100vh;
+    padding: 5rem 2rem 2rem;
+    flex-direction: column;
+    align-items: flex-start;
+    transform: translateX(100%);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    z-index: 51;
+  }
+  .site-navbar.dark-theme .nav-links { background: #1f202e; }
+  .site-navbar.light-theme .nav-links { background: #ffffff; }
+
+  .site-navbar.menu-open .nav-links {
+    transform: translateX(0);
+    box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+  }
+  
+  .site-navbar.menu-open + .nav-backdrop {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .site-navbar.dark-theme.menu-open .menu-btn svg { stroke: #fff; }
+  .site-navbar.light-theme.menu-open .menu-btn svg { stroke: #1f2937; }
+
+  .site-navbar .nav-links a {
+    margin-left: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    width: 100%;
+    border-bottom: 1px solid rgba(128,128,128,0.2);
+    padding-bottom: 0.8rem;
+  }
+  .site-navbar .nav-links a:last-child { border-bottom: none; }
+}
+</style>
+
+<% const isDark = typeof navTheme === 'undefined' ? true : navTheme === 'dark'; %>
+<nav class="site-navbar <%= isDark ? 'dark-theme' : 'light-theme' %>" id="publicNav">
+  <a href="/" class="logo"><span>Douyin</span> Downloader</a>
+  
+  <button class="menu-btn" onclick="toggleMenu()" aria-label="Toggle Menu">
+    <svg id="menuIcon" fill="none" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+    </svg>
+  </button>
+  
+  <div class="nav-links">
+    <a href="/pricing">Bảng Giá</a>
+    <a href="https://www.facebook.com/ztrungflyz" target="_blank">Liên Hệ</a>
+    <a href="/docs">Tài Liệu API</a>
+    <a href="/login">Đăng Nhập</a>
+    <a href="/register">Đăng Ký</a>
+  </div>
+</nav>
+<div class="nav-backdrop" onclick="toggleMenu()"></div>
+
+<script>
+function toggleMenu() {
+  const nav = document.getElementById('publicNav');
+  const icon = document.getElementById('menuIcon');
+  nav.classList.toggle('menu-open');
+  
+  if (nav.classList.contains('menu-open')) {
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>';
+  } else {
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>';
+  }
+}
+</script>
