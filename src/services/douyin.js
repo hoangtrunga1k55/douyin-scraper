@@ -115,6 +115,25 @@ async function checkSession() {
     });
 
     const cookies = await page.cookies('https://www.douyin.com');
+    
+    // Upgrade any session cookies to 1-year persistent cookies
+    let upgradedCount = 0;
+    const persistentCookies = cookies.map(c => {
+      if (c.session || c.expires === -1 || c.expires === 0) {
+        upgradedCount++;
+        const newCookie = { ...c };
+        delete newCookie.session;
+        newCookie.expires = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
+        return newCookie;
+      }
+      return null;
+    }).filter(Boolean);
+
+    if (persistentCookies.length > 0) {
+      await page.setCookie(...persistentCookies);
+      logger.info(`Upgraded ${upgradedCount} session cookies to persistent (1 year)`);
+    }
+
     const hasTtwid = cookies.some((c) => c.name === 'ttwid');
     const hasSessionId = cookies.some((c) => c.name === 'sessionid' || c.name === 'sessionid_ss');
     const cookieCount = cookies.length;
@@ -818,6 +837,9 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
 function parseCookieString(cookieStr) {
   if (!cookieStr || cookieStr === 'your_douyin_cookie_here') return [];
 
+  // Set expiration to 1 year in the future
+  const expires = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
+
   return cookieStr
     .split(';')
     .map((pair) => pair.trim())
@@ -829,6 +851,7 @@ function parseCookieString(cookieStr) {
         value: pair.substring(eqIdx + 1).trim(),
         domain: '.douyin.com',
         path: '/',
+        expires,
       };
     });
 }
