@@ -842,8 +842,8 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
 function parseCookieString(cookieStr) {
   if (!cookieStr || cookieStr === 'your_douyin_cookie_here') return [];
 
-  // Set expiration to 1 year in the future
-  const expires = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
+  // Ép thời hạn sống 1 năm để tránh bị xóa lúc 0:00 Server Restart
+  const expires = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365; // 1 năm
 
   return cookieStr
     .split(';')
