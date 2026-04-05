@@ -116,15 +116,20 @@ async function checkSession() {
 
     const cookies = await page.cookies('https://www.douyin.com');
     
-    // Upgrade any session cookies to 1-year persistent cookies
     let upgradedCount = 0;
     const persistentCookies = cookies.map(c => {
       if (c.session || c.expires === -1 || c.expires === 0) {
         upgradedCount++;
-        const newCookie = { ...c };
-        delete newCookie.session;
-        newCookie.expires = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
-        return newCookie;
+        return {
+          name: c.name,
+          value: c.value,
+          domain: c.domain,
+          path: c.path,
+          secure: c.secure,
+          httpOnly: c.httpOnly,
+          sameSite: c.sameSite,
+          expires: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365
+        };
       }
       return null;
     }).filter(Boolean);
