@@ -194,6 +194,49 @@ router.post('/auth/inject', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/**
+ * POST /api/douyin/cookie
+ * Directly save a Douyin cookie string to .env and inject into browser profile (no restart needed).
+ * Body: { cookie: "sessionid=xxx; ttwid=xxx; ..." }
+ */
+router.post('/douyin/cookie', async (req, res) => {
+  try {
+    const { cookie } = req.body;
+    if (!cookie || cookie.trim().length < 10) {
+      return res.status(400).json({ success: false, error: 'Missing or invalid cookie string' });
+    }
+    const cookieStr = cookie.trim();
+
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.resolve(process.cwd(), '.env');
+
+    // Update runtime config immediately
+    const config = require('../config');
+    config.douyinCookie = cookieStr;
+
+    // Write to .env
+    if (!fs.existsSync(envPath)) {
+      fs.writeFileSync(envPath, `DOUYIN_COOKIE='${cookieStr}'\n`);
+    } else {
+      let content = fs.readFileSync(envPath, 'utf8');
+      if (/^DOUYIN_COOKIE=.*$/m.test(content)) {
+        content = content.replace(/^DOUYIN_COOKIE=.*$/m, `DOUYIN_COOKIE='${cookieStr}'`);
+      } else {
+        content += `\nDOUYIN_COOKIE='${cookieStr}'\n`;
+      }
+      fs.writeFileSync(envPath, content);
+    }
+
+    // Inject into browser profile immediately
+    await douyinService.injectEnvCookies();
+
+    res.json({ success: true, message: 'DOUYIN_COOKIE saved and injected into browser profile', length: cookieStr.length });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 const tiktokService = require('../services/tiktok');
 
 /**

@@ -259,7 +259,84 @@ async function parseVideo(inputUrl) {
   }
 
   logger.info(`Parsing video: ${videoId}`);
+
+  // Try direct browser-context API first (same approach as getUserVideos — more reliable)
+  try {
+    return await parseVideoViaAPI(videoId);
+  } catch (err) {
+    if (err.name === 'VideoFilteredError') throw err;
+    logger.warn(`Direct API failed for ${videoId}: ${err.message} — falling back to page navigation`);
+  }
+
   return await parseVideoViaPuppeteer(videoId);
+}
+
+/**
+ * Parse video using browser-context fetch (same approach as getUserVideosViaAPI).
+ * More reliable than page navigation + XHR interception.
+ */
+async function parseVideoViaAPI(videoId) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+
+  try {
+    await page.setUserAgent(config.douyin.userAgent);
+
+    // Load homepage to establish session context (same as getUserVideosViaAPI)
+    await page.goto(config.douyin.baseUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    }).catch(() => {
+      logger.warn('Homepage load timed out, continuing with existing session...');
+    });
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const apiResult = await page.evaluate(async (awemeId) => {
+      const url = new URL('https://www.douyin.com/aweme/v1/web/aweme/detail/');
+      url.searchParams.set('aweme_id', awemeId);
+      url.searchParams.set('aid', '6383');
+      url.searchParams.set('cookie_enabled', 'true');
+      url.searchParams.set('platform', 'PC');
+      url.searchParams.set('device_platform', 'webapp');
+
+      try {
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const text = await res.text();
+        try {
+          return { ok: true, status: res.status, data: JSON.parse(text) };
+        } catch (e) {
+          return { ok: false, status: res.status, error: `Not JSON: ${text.substring(0, 300)}` };
+        }
+      } catch (e) {
+        return { ok: false, status: 0, error: e.message };
+      }
+    }, videoId);
+
+    if (!apiResult.ok) {
+      throw new Error(`Browser-context API error: ${apiResult.error}`);
+    }
+
+    const data = apiResult.data;
+    if (data.aweme_detail) {
+      logger.info(`Got video detail via direct API for ${videoId}`);
+      return formatVideoDetail(data.aweme_detail);
+    }
+    if (data.filter_detail) {
+      const reason = data.filter_detail.filter_reason || 'unknown';
+      const msg = data.filter_detail.detail_msg || '';
+      const errMsg = `Video bị chặn bởi Douyin (lý do: ${reason}). ${msg}. Video này có thể bị giới hạn vùng hoặc đã bị xóa.`;
+      sendTelegramMessage(`⚠️ <b>Cảnh báo Douyin</b>\n\n${errMsg}`);
+      throw Object.assign(new Error(errMsg), { name: 'VideoFilteredError', statusCode: 403 });
+    }
+
+    throw new Error(`API returned no video detail (status: ${apiResult.status})`);
+  } finally {
+    await page.close();
+  }
 }
 
 /**
