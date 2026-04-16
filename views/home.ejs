@@ -213,6 +213,35 @@
     let pollTimer = null;
     let currentPlatform = 'douyin';
 
+    // URL validation rules per platform
+    const URL_RULES = {
+      douyin: {
+        // Accepts: douyin.com/video/ID, douyin.com/note/ID, v.douyin.com/shortcode
+        regex: /^https?:\/\/(v\.douyin\.com\/[A-Za-z0-9_\-]{3,25}\/?|(www\.)?douyin\.com\/(video|note|discover|user)\/\d{10,25}[^<>"'`;\\]*)$/i,
+        hint: 'Ví dụ: https://www.douyin.com/video/7571084057524021243',
+        placeholder: 'Dán link video Douyin vào đây...',
+        error: 'Link không hợp lệ. Chỉ nhận link Douyin (douyin.com hoặc v.douyin.com).'
+      },
+      tiktok: {
+        // Accepts: tiktok.com/@user/video/ID, vm.tiktok.com/shortcode, vt.tiktok.com/shortcode
+        regex: /^https?:\/\/((www\.)?tiktok\.com\/@[\w.]{1,30}\/(?:video|photo)\/\d{10,25}[^<>"'`;\\]*|(vm|vt)\.tiktok\.com\/[A-Za-z0-9]{5,25}\/?)/i,
+        hint: 'Ví dụ: https://www.tiktok.com/@meo.vat.cuoc.songgg/video/7627116264766377232',
+        placeholder: 'Dán link video TikTok vào đây...',
+        error: 'Link không hợp lệ. Chỉ nhận link TikTok (tiktok.com, vm.tiktok.com).'
+      }
+    };
+
+    function validateUrl(url, platform) {
+      if (!url) return 'Vui lòng dán link video vào ô trên.';
+      if (url.length > 500) return 'Link quá dài, không hợp lệ.';
+      // Block injection patterns
+      if (/[<>"'`;\\]|--|\/\*|\*\/|\bscript\b|\bselect\b|\bunion\b|\bdrop\b|\binsert\b|\bdelete\b/i.test(url)) {
+        return 'Link chứa ký tự không hợp lệ.';
+      }
+      if (!URL_RULES[platform].regex.test(url)) return URL_RULES[platform].error;
+      return null;
+    }
+
     function switchPlatform(platform) {
       currentPlatform = platform;
       const tabDouyin = document.getElementById('tabDouyin');
@@ -223,24 +252,28 @@
       tabDouyin.classList.remove('active');
       tabTiktok.classList.remove('active', 'tiktok');
 
+      const rule = URL_RULES[platform];
+      urlInput.value = '';
+      urlInput.placeholder = rule.placeholder;
+      exampleHint.textContent = rule.hint;
+
       if (platform === 'douyin') {
         tabDouyin.classList.add('active');
-        urlInput.placeholder = 'Dán link video Douyin vào đây...';
-        exampleHint.textContent = 'Ví dụ: https://www.douyin.com/video/7571084057524021243';
       } else {
         tabTiktok.classList.add('active', 'tiktok');
-        urlInput.placeholder = 'Dán link video TikTok vào đây...';
-        exampleHint.textContent = 'Ví dụ: https://www.tiktok.com/@username/video/7328xxxxx';
       }
 
-      // Reset result
+      // Reset result & status
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
       resultCard.classList.remove('show');
       statusMsg.className = 'status-msg';
+      statusMsg.innerHTML = '';
     }
 
     async function parseVideo() {
       const url = document.getElementById('videoUrl').value.trim();
-      if (!url) { showStatus('Vui lòng dán một đường link video hợp lệ.', 'error'); return; }
+      const validationError = validateUrl(url, currentPlatform);
+      if (validationError) { showStatus(validationError, 'error'); return; }
 
       const btn = document.getElementById('parseBtn');
       btn.disabled = true;

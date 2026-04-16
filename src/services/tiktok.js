@@ -27,7 +27,7 @@ async function getBrowser() {
     const execPath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
     logger.info(`[TikTok] Launching Puppeteer (profile: ${config.tiktokBrowserDataDir}${execPath ? ', chromium: ' + execPath : ''})...`);
     browserInstance = await puppeteer.launch({
-      headless: false,
+      headless: 'new',
       userDataDir: config.tiktokBrowserDataDir,
       executablePath: execPath || undefined,
       args: [
