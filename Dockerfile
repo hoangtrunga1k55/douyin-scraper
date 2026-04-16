@@ -1,18 +1,19 @@
 FROM node:20-slim
 
-# Install Chromium + Vietnamese fonts + utilities + GUI dependencies (Xvfb, VNC, noVNC)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    fonts-noto-cjk \
-    fonts-noto-color-emoji \
-    ca-certificates \
-    curl \
-    xvfb \
-    x11vnc \
-    fluxbox \
-    novnc \
-    websockify \
-    && rm -rf /var/lib/apt/lists/*
+# Install Chromium + fonts + Xvfb + VNC (noVNC web interface on port 6080)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       chromium \
+       fonts-noto-cjk \
+       fonts-noto-color-emoji \
+       ca-certificates \
+       curl \
+       xvfb \
+       x11vnc \
+       novnc \
+       fluxbox \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/cache/apt/archives/*
 
 # Set Puppeteer to use installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -34,14 +35,14 @@ COPY . .
 RUN chmod +x start.sh
 
 # Create directories
-RUN mkdir -p downloads .browser_data logs
+RUN mkdir -p downloads .browser_data .browser_data_tiktok logs
 
-# Expose Node app port and noVNC port
-EXPOSE 3000 6080
+# Expose Node app port
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
-# Start using the custom script that initializes Xvfb and VNC
+# Start using the custom script that initializes Xvfb
 CMD ["./start.sh"]

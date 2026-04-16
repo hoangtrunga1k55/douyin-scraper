@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const { closeBrowser, injectEnvCookies, checkSession } = require('./services/douyin');
 const douyinService = require('./services/douyin');
+const tiktokService = require('./services/tiktok');
 const { startWorker } = require('./services/queue');
 const connectDB = require('./models/index');
 const session = require('express-session');
@@ -86,30 +87,39 @@ const server = app.listen(config.port, async () => {
   logger.info(`📁 Browser profile: ${config.browserDataDir}`);
 
   // Start queue worker
-  startWorker(douyinService);
+  startWorker(douyinService, tiktokService);
 
   // Auto-inject .env cookies into persistent profile on first start
   try {
     const injected = await injectEnvCookies();
     if (injected) {
-      logger.info('✅ .env cookies imported into browser profile');
+      logger.info('✅ Douyin .env cookies imported into browser profile');
     }
 
     const session = await checkSession();
     if (session.valid) {
-      logger.info(`✅ Session OK (${session.cookie_count} cookies, logged_in: ${session.logged_in})`);
+      logger.info(`✅ Douyin session OK (${session.cookie_count} cookies, logged_in: ${session.logged_in})`);
     } else {
       logger.warn(
-        '⚠️  No valid session. Đăng nhập: mở http://localhost:' +
+        '⚠️  No valid Douyin session. Đăng nhập: mở http://localhost:' +
           config.port +
           '/api/auth/login'
       );
     }
   } catch (err) {
-    logger.warn(`⚠️  Could not validate session: ${err.message}`);
-    logger.warn(
-      '⚠️  Đăng nhập: mở http://localhost:' + config.port + '/api/auth/login'
-    );
+    logger.warn(`⚠️  Could not validate Douyin session: ${err.message}`);
+  }
+
+  // Auto-inject TikTok .env cookies into persistent profile on first start
+  try {
+    const tiktokInjected = await tiktokService.injectEnvCookies();
+    if (tiktokInjected) {
+      logger.info('✅ TikTok .env cookies imported into browser profile');
+    } else {
+      logger.warn('⚠️  No TIKTOK_COOKIE in .env. TikTok captcha bypass disabled. Set TIKTOK_COOKIE or login via /api/tiktok/auth/login');
+    }
+  } catch (err) {
+    logger.warn(`⚠️  Could not inject TikTok cookies: ${err.message}`);
   }
 });
 
@@ -117,6 +127,7 @@ const server = app.listen(config.port, async () => {
 async function shutdown(signal) {
   logger.info(`${signal} received. Shutting down gracefully...`);
   await closeBrowser();
+  await tiktokService.closeBrowser();
   server.close(() => {
     logger.info('Server closed.');
     process.exit(0);

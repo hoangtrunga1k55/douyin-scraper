@@ -27,6 +27,22 @@ const config = {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   },
 
+  // TikTok base URLs
+  tiktok: {
+    baseUrl: 'https://www.tiktok.com',
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  },
+
+  // TikTok cookie - bypasses captcha
+  tiktokCookie: process.env.TIKTOK_COOKIE || '',
+
+  // TikTok persistent browser profile (separate from Douyin)
+  tiktokBrowserDataDir: process.env.TIKTOK_BROWSER_DATA_DIR || path.join(__dirname, '..', '.browser_data_tiktok'),
+
+  // Base URL for generating proxy links in API responses
+  serverBaseUrl: process.env.SERVER_BASE_URL || 'http://localhost:3000',
+
   // Telegram Notifications
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN || '',

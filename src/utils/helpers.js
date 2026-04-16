@@ -88,6 +88,63 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// ─── TikTok Helpers ──────────────────────────────────────────
+
+/**
+ * Extract video ID from TikTok URL:
+ * - https://www.tiktok.com/@username/video/7000000000000000000
+ * - https://www.tiktok.com/@username/photo/7000000000000000000
+ */
+function extractTiktokVideoId(url) {
+  if (!url) return null;
+  const match = url.match(/(?:video|photo)\/([\d]+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract username from TikTok profile URL:
+ * - https://www.tiktok.com/@username
+ * - https://www.tiktok.com/@username?lang=en
+ */
+function extractTiktokUsername(url) {
+  if (!url) return null;
+  const match = url.match(/tiktok\.com\/@([A-Za-z0-9_.]+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Check if URL is a TikTok short link (vm.tiktok.com or vt.tiktok.com)
+ */
+function isTiktokShortLink(url) {
+  return /(?:vm|vt)\.tiktok\.com/.test(url);
+}
+
+/**
+ * Check if URL is a TikTok video URL
+ */
+function isTiktokVideoUrl(url) {
+  return /tiktok\.com\/@[^/]+\/(?:video|photo)\/\d+/.test(url) || isTiktokShortLink(url);
+}
+
+/**
+ * Check if URL is a TikTok user profile URL
+ */
+function isTiktokUserUrl(url) {
+  return /tiktok\.com\/@[A-Za-z0-9_.]+\/?(\?|$)/.test(url);
+}
+
+/**
+ * Extract TikTok URL from share text
+ * e.g., "Check this out! https://vm.tiktok.com/xxxxx/"
+ */
+function extractTiktokUrlFromShareText(text) {
+  if (!text) return null;
+  const match = text.match(
+    /https?:\/\/(?:www\.)?(?:vm\.|vt\.)?tiktok\.com\/[^\s]+/
+  );
+  return match ? match[0] : null;
+}
+
 module.exports = {
   extractVideoId,
   extractSecUid,
@@ -97,4 +154,11 @@ module.exports = {
   extractUrlFromShareText,
   sanitizeFilename,
   formatBytes,
+  // TikTok
+  extractTiktokVideoId,
+  extractTiktokUsername,
+  isTiktokShortLink,
+  isTiktokVideoUrl,
+  isTiktokUserUrl,
+  extractTiktokUrlFromShareText,
 };

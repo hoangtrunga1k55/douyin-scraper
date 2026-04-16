@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <%- include('partials/seo', { defaultTitle: 'Tải Video Douyin - Miễn Phí' }) %>
+  <%- include('partials/seo', { defaultTitle: 'Tải Video Douyin & TikTok - Miễn Phí' }) %>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -94,6 +94,27 @@
     .btn-primary { background: linear-gradient(135deg, #fe2c55, #d91a40); color: #fff; }
     .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
 
+    .platform-tabs {
+      display: flex; gap: 0; margin-bottom: 1.5rem;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 4px; position: relative;
+    }
+    .platform-tab {
+      flex: 1; padding: 0.65rem 1rem; border-radius: 10px; border: none;
+      background: transparent; color: rgba(255,255,255,0.5);
+      font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      transition: all 0.3s ease; font-family: 'Inter', sans-serif; text-align: center;
+    }
+    .platform-tab.active {
+      background: linear-gradient(135deg, #fe2c55, #d91a40); color: #fff;
+      box-shadow: 0 2px 12px rgba(254,44,85,0.3);
+    }
+    .platform-tab.active.tiktok {
+      background: linear-gradient(135deg, #25f4ee, #fe2c55); color: #fff;
+      box-shadow: 0 2px 12px rgba(37,244,238,0.3);
+    }
+    .platform-tab:hover:not(.active) { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.06); }
+
     .features {
       display: grid; grid-template-columns: repeat(2, 1fr);
       gap: 1.2rem; max-width: 640px; width: 100%; margin: 3rem auto 2rem; padding: 0 1.5rem;
@@ -123,16 +144,20 @@
   <%- include('partials/header', {navTheme: 'dark'}) %>
 
   <section class="hero">
-    <h1>Tải Video <span>Douyin</span><br>Miễn Phí</h1>
-    <p>Dán link video Douyin và tải về ngay lập tức. Không chứa logo watermark, không yêu cầu đăng nhập.</p>
+    <h1>Tải Video <span>Douyin & TikTok</span><br>Miễn Phí</h1>
+    <p>Dán link video Douyin hoặc TikTok và tải về ngay lập tức. Không chứa logo watermark, không yêu cầu đăng nhập.</p>
   </section>
 
   <div class="download-box">
+    <div class="platform-tabs">
+      <button class="platform-tab active" id="tabDouyin" onclick="switchPlatform('douyin')">Douyin</button>
+      <button class="platform-tab" id="tabTiktok" onclick="switchPlatform('tiktok')">TikTok</button>
+    </div>
     <div class="input-group">
       <input type="text" id="videoUrl" placeholder="Dán link video Douyin vào đây..." autocomplete="off">
       <button id="parseBtn" onclick="parseVideo()">Tải Về</button>
     </div>
-    <p style="font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 0.8rem; text-align: left; padding-left: 0.5rem;">Ví dụ: https://www.douyin.com/video/7571084057524021243</p>
+    <p id="exampleHint" style="font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 0.8rem; text-align: left; padding-left: 0.5rem;">Ví dụ: https://www.douyin.com/video/7571084057524021243</p>
     <div class="status-msg" id="statusMsg"></div>
     <div class="result-card" id="resultCard">
       <div class="thumb-row">
@@ -176,7 +201,7 @@
   </div>
 
   <footer>
-    &copy; 2026 Douyin Video Downloader. Dành cho mục đích cá nhân.<br>
+    &copy; 2026 Douyin & TikTok Video Downloader. Dành cho mục đích cá nhân.<br>
     <span style="font-size: 0.85rem; margin-top: 5px; display: inline-block;">
       Hỗ trợ / Liên hệ: <a href="https://www.facebook.com/ztrungflyz" target="_blank" style="color: #25f4ee; text-decoration: none;">Facebook Admin</a>
     </span>
@@ -186,10 +211,36 @@
     const statusMsg = document.getElementById('statusMsg');
     const resultCard = document.getElementById('resultCard');
     let pollTimer = null;
+    let currentPlatform = 'douyin';
+
+    function switchPlatform(platform) {
+      currentPlatform = platform;
+      const tabDouyin = document.getElementById('tabDouyin');
+      const tabTiktok = document.getElementById('tabTiktok');
+      const urlInput = document.getElementById('videoUrl');
+      const exampleHint = document.getElementById('exampleHint');
+
+      tabDouyin.classList.remove('active');
+      tabTiktok.classList.remove('active', 'tiktok');
+
+      if (platform === 'douyin') {
+        tabDouyin.classList.add('active');
+        urlInput.placeholder = 'Dán link video Douyin vào đây...';
+        exampleHint.textContent = 'Ví dụ: https://www.douyin.com/video/7571084057524021243';
+      } else {
+        tabTiktok.classList.add('active', 'tiktok');
+        urlInput.placeholder = 'Dán link video TikTok vào đây...';
+        exampleHint.textContent = 'Ví dụ: https://www.tiktok.com/@username/video/7328xxxxx';
+      }
+
+      // Reset result
+      resultCard.classList.remove('show');
+      statusMsg.className = 'status-msg';
+    }
 
     async function parseVideo() {
       const url = document.getElementById('videoUrl').value.trim();
-      if (!url) { showStatus('Vui lòng dán một đường link video Douyin hơp lệ.', 'error'); return; }
+      if (!url) { showStatus('Vui lòng dán một đường link video hợp lệ.', 'error'); return; }
 
       const btn = document.getElementById('parseBtn');
       btn.disabled = true;
@@ -197,8 +248,11 @@
       resultCard.classList.remove('show');
       showStatus('<span class="spinner"></span> Đang đưa vào hàng đợi...', 'loading');
 
+      // Choose endpoint based on platform
+      const endpoint = currentPlatform === 'tiktok' ? '/api/tiktok/free/parse' : '/api/free/parse';
+
       try {
-        const resp = await fetch('/api/free/parse', {
+        const resp = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url })
@@ -239,11 +293,11 @@
             pollTimer = null;
             const v = job.result;
 
-            // Route all Douyin CDN URLs through our proxy to bypass 403
-            const proxyUrl = (u) => u ? '/api/proxy/media?url=' + encodeURIComponent(u) : '';
-            const proxyDl  = (u) => u ? '/api/proxy/media?dl=1&url=' + encodeURIComponent(u) : '#';
+            // Choose proxy based on platform
+            const proxyBase = currentPlatform === 'tiktok' ? '/api/tiktok/proxy/media' : '/api/proxy/media';
+            const proxyUrl = (u) => u ? proxyBase + '?url=' + encodeURIComponent(u) : '';
+            const proxyDl  = (u) => u ? proxyBase + '?dl=1&url=' + encodeURIComponent(u) : '#';
 
-            // API returns: cover_url, download_url, author.nickname
             document.getElementById('thumb').src = proxyUrl(v.cover_url);
             document.getElementById('videoTitle').textContent = v.title || 'Không có tiêu đề';
             document.getElementById('videoAuthor').textContent = v.author?.nickname ? '👤 ' + v.author.nickname : '';

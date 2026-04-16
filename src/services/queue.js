@@ -18,7 +18,7 @@ const douyinQueue = new Queue('douyin-jobs', { connection });
 // ─── Worker ──────────────────────────────────────────────────
 let worker = null;
 
-function startWorker(douyinService) {
+function startWorker(douyinService, tiktokService) {
   worker = new Worker('douyin-jobs', async (job) => {
     const { type, url, count, cursor, since } = job.data;
     logger.info(`[Queue] Processing job ${job.id}: ${type} - ${url}`);
@@ -30,6 +30,15 @@ function startWorker(douyinService) {
       }
       case 'channel.videos': {
         const result = await douyinService.getUserVideos(url, count || 20, cursor || 0, since);
+        return result;
+      }
+      // ─── TikTok Job Types ───────────────────────
+      case 'tiktok.video.parse': {
+        const result = await tiktokService.parseVideo(url);
+        return result;
+      }
+      case 'tiktok.channel.videos': {
+        const result = await tiktokService.getUserVideos(url, count || 20, cursor || 0, since);
         return result;
       }
       default:

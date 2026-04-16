@@ -6,6 +6,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { sanitizeFilename, formatBytes } = require('../utils/helpers');
 const douyinService = require('./douyin');
+const tiktokService = require('./tiktok');
 
 // In-memory task store
 const tasks = new Map();
@@ -134,15 +135,19 @@ async function processBatchDownload(taskId, userUrl, count) {
   if (!task) return;
 
   try {
+    // Determine platform
+    const isTiktok = /tiktok\.com/.test(userUrl);
+    const service = isTiktok ? tiktokService : douyinService;
+
     // Get video list
     task.status = 'fetching_videos';
-    const result = await douyinService.getUserVideos(userUrl, count);
+    const result = await service.getUserVideos(userUrl, count);
     const videos = result.videos;
     task.total = videos.length;
     task.user = result.user;
     task.status = 'downloading';
 
-    logger.info(`Batch download: found ${videos.length} videos for task ${taskId}`);
+    logger.info(`Batch download: found ${videos.length} videos for task ${taskId} (platform: ${isTiktok ? 'tiktok' : 'douyin'})`);
 
     // Create task-specific directory
     const taskDir = path.join(
@@ -161,9 +166,14 @@ async function processBatchDownload(taskId, userUrl, count) {
 
           if (!video.download_url) {
             // Parse video again to get download URL
-            const parsed = await douyinService.parseVideo(
-              `${config.douyin.baseUrl}/video/${video.video_id}`
-            );
+            let parsed;
+            if (isTiktok) {
+                // We shouldn't need this often since TikTok parser mostly includes it, 
+                // but just in case:
+                parsed = await service.parseVideo(`https://www.tiktok.com/@${result.user.unique_id}/video/${video.video_id}`);
+            } else {
+                parsed = await service.parseVideo(`${config.douyin.baseUrl}/video/${video.video_id}`);
+            }
             video.download_url = parsed.download_url;
           }
 

@@ -62,7 +62,7 @@
 
   <div class="container">
     <h1>Tài Liệu Cung Cấp API</h1>
-    <p class="subtitle">Sử dụng API Token của bạn để tự động hóa việc lưu video Douyin vào ứng dụng từ xa.</p>
+    <p class="subtitle">Sử dụng API Token của bạn để tự động hóa việc lưu video Douyin & TikTok vào ứng dụng từ xa.</p>
 
     <div class="note">
       🔑 <strong>Xác thực:</strong> Truyền API Token của bạn nằm trong Header gửi đi là <code>Authorization: Bearer &lt;your_token&gt;</code>.<br>
@@ -105,10 +105,28 @@
             <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">20</td>
             <td style="padding:0.5rem 1rem; color:#8b949e;">Batch download video kênh</td>
           </tr>
-          <tr>
-            <td style="padding:0.5rem 1rem;"><code>POST /api/free/parse</code></td>
-            <td style="padding:0.5rem 1rem; text-align:center; color:#3fb950; font-weight:600;">Miễn phí</td>
-            <td style="padding:0.5rem 1rem; color:#8b949e;">Parse video (không cần auth)</td>
+          <tr style="border-bottom:1px solid #21262d; background:rgba(37,244,238,0.03);">
+            <td colspan="3" style="padding:0.6rem 1rem; color:#25f4ee; font-weight:700; font-size:0.8rem; letter-spacing:0.5px;">🎵 TIKTOK ENDPOINTS</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/tiktok/video/parse</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">10</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Parse thông tin video TikTok</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/tiktok/video/download</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">10</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Lấy link tải video TikTok</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/tiktok/channel/videos</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">20</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Lấy danh sách video kênh TikTok</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:0.5rem 1rem;"><code>POST /api/tiktok/channel/download</code></td>
+            <td style="padding:0.5rem 1rem; text-align:center; color:#ffd54f; font-weight:600;">20</td>
+            <td style="padding:0.5rem 1rem; color:#8b949e;">Batch download video kênh TikTok</td>
           </tr>
         </tbody>
         </table>
@@ -301,35 +319,6 @@
       </div>
     </div>
 
-    <!-- ─── Free ────────────────────────────────── -->
-    <div class="section">
-      <h2>Free Endpoint</h2>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method post">POST</span>
-          <span class="endpoint-path">/api/free/parse</span>
-          <span class="badge free">🔓 No auth</span>
-        </div>
-        <div class="endpoint-desc">Parse a Douyin video URL (free, no token or credits needed). Returns a jobId to poll.</div>
-        <div class="code-block">
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-<pre>curl -X POST https://thq-solution-tools.io.vn/api/free/parse \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://v.douyin.com/xxxxx"}'</pre>
-        </div>
-        <div class="response-label">✅ Response</div>
-        <div class="response-block">
-<pre>{
-  "success": true,
-  "data": {
-    "jobId": "d4e5f6a7-b8c9-0123-def0-456789abcdef"
-  }
-}</pre>
-        </div>
-      </div>
-    </div>
-
     <!-- ─── Error Responses ─────────────────────── -->
     <div class="section">
       <h2>Error Responses</h2>
@@ -398,6 +387,133 @@
         </div>
       </div>
     </div>
+
+    <!-- ─── TikTok Video Endpoints ──────────────── -->
+    <div class="section">
+      <h2>🎵 TikTok Video Endpoints</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/tiktok/video/parse</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 10 credits</span>
+        </div>
+        <div class="endpoint-desc">Parse a TikTok video URL. Returns a jobId to poll for video info.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/tiktok/video/parse \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.tiktok.com/@username/video/7328xxxxx"}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "message": "Job queued. Poll GET /api/job/:jobId for result."
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/tiktok/video/download</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 10 credits</span>
+        </div>
+        <div class="endpoint-desc">Queue a TikTok video download job. Poll the jobId to get the download URL.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/tiktok/video/download \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://vm.tiktok.com/xxxxx"}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "f7e6d5c4-b3a2-1098-7654-321fedcba098",
+    "message": "Job queued. Poll GET /api/job/:jobId for download URL."
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TikTok Channel ──────────────────────── -->
+    <div class="section">
+      <h2>🎵 TikTok Channel Endpoints</h2>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/tiktok/channel/videos</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 20 credits</span>
+        </div>
+        <div class="endpoint-desc">Get a list of videos from a TikTok user/channel profile. Supports date filtering with <code>since</code> parameter.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/tiktok/channel/videos \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.tiktok.com/@username", "count": 20, "since": "today"}'</pre>
+        </div>
+        <div class="endpoint-desc" style="border-top:1px solid #21262d; padding-top:0.6rem;">
+          📌 <strong>Tham số <code>since</code></strong> (tùy chọn): Chỉ lấy video đăng từ ngày này trở đi.<br>
+          &nbsp;&nbsp;• <code>"today"</code> — Chỉ video hôm nay<br>
+          &nbsp;&nbsp;• <code>"yesterday"</code> — Từ hôm qua<br>
+          &nbsp;&nbsp;• <code>"2026-04-01"</code> — Từ ngày cụ thể<br>
+          &nbsp;&nbsp;• Không truyền — Lấy tất cả
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "jobId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "message": "Job queued. Poll GET /api/job/:jobId for result."
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/tiktok/channel/download</span>
+          <span class="badge auth">🔒 Auth</span>
+          <span class="badge credits">💰 20 credits</span>
+        </div>
+        <div class="endpoint-desc">Start a batch download of videos from a TikTok channel. Returns a task ID for tracking.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl -X POST https://thq-solution-tools.io.vn/api/tiktok/channel/download \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.tiktok.com/@username", "count": 10}'</pre>
+        </div>
+        <div class="response-label">✅ Response</div>
+        <div class="response-block">
+<pre>{
+  "success": true,
+  "data": {
+    "taskId": "c3d4e5f6-a7b8-9012-cdef-234567890123",
+    "status": "started",
+    "total": 10
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>

@@ -14,6 +14,7 @@ yarn-error.log*
 # Application Data / Output
 downloads/
 .browser_data/
+.browser_data_tiktok/
 browser_data/
 logs/
 *.log
@@ -42,3 +43,4 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+/browser_data_tiktok/

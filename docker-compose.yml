@@ -13,7 +13,8 @@ services:
     volumes:
       - ./downloads:/app/downloads
       - ./browser_data:/app/.browser_data
-      - ./.env:/app/.env:ro
+      - ./browser_data_tiktok:/app/.browser_data_tiktok
+      - ./.env:/app/.env
     environment:
       - NODE_ENV=production
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
