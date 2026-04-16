@@ -10,7 +10,7 @@ const seoSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    default: 'Douyin Downloader'
+    default: 'Tải Video TikTok & Douyin Miễn Phí - Không Watermark'
   },
   description: {
     type: String,
