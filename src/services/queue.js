@@ -70,8 +70,8 @@ async function addJob(type, data, opts = {}) {
   const jobId = crypto.randomUUID();
   const job = await douyinQueue.add(type, { type, ...data }, {
     jobId,
-    removeOnComplete: { age: 3600 }, // Keep completed jobs for 1 hour
-    removeOnFail: { age: 3600 },
+    removeOnComplete: { age: 600, count: 100 },
+    removeOnFail: { age: 600, count: 50 },
     attempts: 2,
     backoff: { type: 'exponential', delay: 3000 },
     ...opts,

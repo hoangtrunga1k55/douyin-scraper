@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   douyin-api:
     build: .
@@ -25,6 +31,7 @@ services:
     security_opt:
       - seccomp=unconfined
     shm_size: '512mb'
+    logging: *default-logging
     networks:
       - shared_proxy
 
@@ -34,6 +41,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./mongo_data:/data/db
+    logging: *default-logging
     networks:
       - shared_proxy
 
@@ -41,6 +49,15 @@ services:
     image: redis:7-alpine
     container_name: douyin-redis
     restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    volumes:
+      - ./redis_data:/data
+    logging: *default-logging
     networks:
       - shared_proxy
 
