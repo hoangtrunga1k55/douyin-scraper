@@ -16,7 +16,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="${ENV_FILE:-/home/ubuntu/Project/douyin-scraper/.env}"
 
 install -m 0755 "$SCRIPT_DIR/vps-maintenance.sh" /usr/local/bin/vps-maintenance.sh
-echo "Installed /usr/local/bin/vps-maintenance.sh"
+# Patch default ENV_FILE so manual runs work without exporting env var
+sed -i "s|^ENV_FILE=\"\${ENV_FILE:-.*}\"|ENV_FILE=\"\${ENV_FILE:-${ENV_FILE}}\"|" /usr/local/bin/vps-maintenance.sh
+echo "Installed /usr/local/bin/vps-maintenance.sh (ENV_FILE=${ENV_FILE})"
 
 cat > /etc/cron.d/vps-maintenance <<EOF
 # VPS maintenance: disk monitor (hourly) + docker prune (weekly Sun 03:00)
