@@ -32,10 +32,24 @@ let browserInstance = null;
  * Get or launch a shared Puppeteer browser instance.
  * Uses userDataDir for persistent cookies — survive restarts, auto-refresh on page loads.
  */
+/**
+ * Remove stale single-instance lock files from a Chromium profile. These are
+ * left behind when the browser dies uncleanly (e.g. the container is SIGKILLed
+ * on redeploy); on next launch Chromium aborts with
+ * "Failed to create SingletonLock: File exists". Only call this when no browser
+ * is actively using the profile.
+ */
+function clearSingletonLocks(profileDir) {
+  for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
+    try { fs.unlinkSync(`${profileDir}/${f}`); } catch (e) { /* not present */ }
+  }
+}
+
 async function getBrowser() {
   if (!browserInstance || !browserInstance.isConnected()) {
     // Ensure browser data dir exists
     fs.mkdirSync(config.browserDataDir, { recursive: true });
+    clearSingletonLocks(config.browserDataDir);
 
     const execPath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
     logger.info(`Launching Puppeteer (profile: ${config.browserDataDir}${execPath ? ', chromium: ' + execPath : ''})...`);
@@ -76,6 +90,7 @@ async function openLoginBrowser() {
   await closeBrowser();
 
   fs.mkdirSync(config.browserDataDir, { recursive: true });
+  clearSingletonLocks(config.browserDataDir);
 
   logger.info('Opening login browser (visible)...');
   const execPath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
