@@ -20,14 +20,21 @@ install -m 0755 "$SCRIPT_DIR/vps-maintenance.sh" /usr/local/bin/vps-maintenance.
 sed -i "s|^ENV_FILE=\"\${ENV_FILE:-.*}\"|ENV_FILE=\"\${ENV_FILE:-${ENV_FILE}}\"|" /usr/local/bin/vps-maintenance.sh
 echo "Installed /usr/local/bin/vps-maintenance.sh (ENV_FILE=${ENV_FILE})"
 
+install -m 0755 "$SCRIPT_DIR/douyin-session-check.sh" /usr/local/bin/douyin-session-check.sh
+sed -i "s|^ENV_FILE=\"\${ENV_FILE:-.*}\"|ENV_FILE=\"\${ENV_FILE:-${ENV_FILE}}\"|" /usr/local/bin/douyin-session-check.sh
+echo "Installed /usr/local/bin/douyin-session-check.sh"
+
 cat > /etc/cron.d/vps-maintenance <<EOF
 # VPS maintenance: disk monitor (hourly) + docker prune (weekly Sun 03:00)
+# + Douyin session health check (daily 12:00). Times are Vietnam time via CRON_TZ.
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=Asia/Ho_Chi_Minh
 ENV_FILE=${ENV_FILE}
 
-0 * * * * root /usr/local/bin/vps-maintenance.sh monitor >> /var/log/vps-maintenance.log 2>&1
-0 3 * * 0 root /usr/local/bin/vps-maintenance.sh prune   >> /var/log/vps-maintenance.log 2>&1
+0 * * * *  root /usr/local/bin/vps-maintenance.sh monitor    >> /var/log/vps-maintenance.log 2>&1
+0 3 * * 0  root /usr/local/bin/vps-maintenance.sh prune       >> /var/log/vps-maintenance.log 2>&1
+0 12 * * * root /usr/local/bin/douyin-session-check.sh        >> /var/log/douyin-session-check.log 2>&1
 EOF
 chmod 644 /etc/cron.d/vps-maintenance
 echo "Installed /etc/cron.d/vps-maintenance"
@@ -37,3 +44,5 @@ systemctl restart cron 2>/dev/null || systemctl restart crond 2>/dev/null || tru
 echo
 echo "Done. Test now:"
 echo "  /usr/local/bin/vps-maintenance.sh test"
+echo "  /usr/local/bin/douyin-session-check.sh test    # Telegram test"
+echo "  /usr/local/bin/douyin-session-check.sh          # real session check"

@@ -182,6 +182,19 @@ router.get('/auth/confirm', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/**
+ * GET /api/auth/status
+ * Lightweight session health check (for cron/Telegram monitoring).
+ * Returns checkSession() — { valid, logged_in, cookie_count, has_session, ... }.
+ * Side-effect-free except that checkSession re-extends local session cookies.
+ */
+router.get('/auth/status', async (_req, res, next) => {
+  try {
+    const status = await douyinService.checkSession();
+    res.json({ success: true, data: status });
+  } catch (err) { next(err); }
+});
+
 router.post('/auth/inject', async (_req, res, next) => {
   try {
     const result = await douyinService.injectEnvCookies();
