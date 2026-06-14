@@ -1,0 +1,52 @@
+name: Deploy to VPS
+
+# CI/CD: push to master -> SSH into the VPS -> pull latest -> rebuild + restart
+# Docker -> prune old images/cache -> health-check -> Telegram notify.
+#
+# Required repository Secrets (Settings -> Secrets and variables -> Actions):
+#   VPS_HOST      VPS IP / hostname           (e.g. 103.163.118.42)
+#   VPS_USERNAME  SSH user                    (e.g. ubuntu)
+#   VPS_SSH_KEY   private SSH key (full PEM)   matching an authorized_keys entry on the VPS
+#   VPS_PORT      SSH port (optional)          defaults to 22
+# Optional repository Variable:
+#   VPS_PROJECT_PATH  defaults to /home/ubuntu/Project/douyin-scraper
+#
+# The VPS git remote must already be able to fetch from GitHub non-interactively
+# (it does today for manual deploys). All heavy lifting lives in scripts/deploy.sh.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+      - ".github/**"
+  workflow_dispatch: {}
+
+# Never run two deploys at once; let an in-flight deploy finish.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 20m
+          script: |
+            set -e
+            PROJECT_DIR="${{ vars.VPS_PROJECT_PATH || '/home/ubuntu/Project/douyin-scraper' }}"
+            cd "$PROJECT_DIR"
+            # root operating a repo owned by 'ubuntu' -> git refuses without this
+            git config --global --add safe.directory "$PROJECT_DIR"
+            echo "▶ Fetching latest master..."
+            git fetch --all --prune
+            git reset --hard origin/master
+            chmod +x scripts/*.sh
+            bash scripts/deploy.sh

@@ -13,8 +13,10 @@ services:
       - mongo
       - redis
     ports:
-      - "3000:3000"
-      - "6080:6080"
+      # Host port is overridable via .env (default 3000/6080) to avoid clashes
+      # with other local containers. VPS leaves these unset -> stays 3000/6080.
+      - "${DOUYIN_HOST_PORT:-3000}:3000"
+      - "${DOUYIN_VNC_PORT:-6080}:6080"
     # Port 3000 and 6080 accessed via Nginx in prod, mapped for local access
     volumes:
       - ./downloads:/app/downloads

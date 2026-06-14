@@ -2,6 +2,13 @@ node_modules/
 .env
 downloads/
 .browser_data/
+browser_data/
+.browser_data_tiktok/
+browser_data_tiktok/
+mongo_data/
+redis_data/
+.git/
+.github/
 *.log
 .DS_Store
 combined.log

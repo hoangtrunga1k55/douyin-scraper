@@ -627,17 +627,17 @@ async function getUserVideos(inputUrl, count = 20, cursor = 0, since = null) {
     throw new Error(errMsg);
   }
 
-  // Direct API call (bypasses captcha entirely)
+  // Direct API call (fast path; bypasses captcha via the logged-in session).
   try {
     return await getUserVideosViaAPI(secUid, count, cursor, cookieStr, sinceTs);
   } catch (err) {
     logger.warn(`Direct API failed: ${err.message}`);
   }
 
-  // Fallback: try Puppeteer page loading
+  // Fallback: Puppeteer page loading (lets Douyin's own JS sign the post request).
   const result = await getUserVideosViaPuppeteer(secUid, url, count, cursor);
 
-  // Apply since filter to fallback results too
+  // Apply since filter to fallback results too.
   if (sinceTs && result.videos) {
     result.videos = result.videos.filter(v => {
       if (!v.create_time) return true;
@@ -812,7 +812,11 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
   let interceptedUserInfo = null;
 
   try {
-    await page.setUserAgent(config.douyin.userAgent);
+    // Do NOT override the user-agent here: forcing a Windows UA onto a Linux
+    // Chromium creates a navigator/platform mismatch that trips Douyin's bot
+    // detection, which then serves a stripped profile page with no post-feed
+    // XHR (interception gets 0 -> stale DOM fallback). The stealth plugin
+    // already presents a consistent, realistic UA.
     await page.setViewport({ width: 1920, height: 1080 });
 
     page.on('response', async (response) => {
@@ -842,11 +846,14 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
 
     logger.info(`Loading user page (fallback): ${userUrl}`);
 
+    // networkidle2 (not networkidle0): Douyin keeps long-poll connections open,
+    // so networkidle0 never settles and the post feed XHR isn't fully loaded
+    // before we move on, leaving interceptedPosts empty -> stale DOM fallback.
     await page.goto(userUrl, {
-      waitUntil: 'networkidle0',
+      waitUntil: 'networkidle2',
       timeout: 45000,
     }).catch(() => {
-      logger.warn('networkidle0 timed out, continuing...');
+      logger.warn('networkidle2 timed out, continuing...');
     });
 
     await new Promise((r) => setTimeout(r, 5000));
@@ -887,7 +894,7 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
           seen.add(idMatch[1]);
           videos.push({
             video_id: idMatch[1],
-            url: `https://www.douyin.com${href.startsWith('/') ? href : '/' + href}`,
+            url: `https://www.douyin.com/video/${idMatch[1]}`,
           });
         }
       });
