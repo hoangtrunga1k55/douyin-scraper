@@ -39,6 +39,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           command_timeout: 20m
+          envs: TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID
           script: |
             set -e
             PROJECT_DIR="${{ vars.VPS_PROJECT_PATH || '/home/ubuntu/Project/douyin-scraper' }}"
@@ -48,5 +49,29 @@ jobs:
             echo "▶ Fetching latest master..."
             git fetch --all --prune
             git reset --hard origin/master
+
+            set_env_var() {
+              KEY="$1"
+              VALUE="$2"
+              [ -z "${VALUE:-}" ] && return 0
+              touch .env
+              if grep -q "^${KEY}=" .env; then
+                sed -i "s|^${KEY}=.*|${KEY}=${VALUE}|" .env
+              else
+                printf "\n%s=%s\n" "$KEY" "$VALUE" >> .env
+              fi
+            }
+            set_env_var TELEGRAM_BOT_TOKEN "${TELEGRAM_BOT_TOKEN:-}"
+            set_env_var TELEGRAM_CHAT_ID "${TELEGRAM_CHAT_ID:-}"
+
             chmod +x scripts/*.sh
+            echo "▶ Installing/updating VPS maintenance cron..."
+            if sudo -n true 2>/dev/null; then
+              sudo -n ENV_FILE="$PROJECT_DIR/.env" bash scripts/install-vps-maintenance.sh || echo "WARN: maintenance install failed"
+            else
+              echo "WARN: sudo -n unavailable; skipping maintenance cron install"
+            fi
             bash scripts/deploy.sh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
