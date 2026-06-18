@@ -67,7 +67,7 @@ jobs:
             chmod +x scripts/*.sh
             echo "▶ Installing/updating VPS maintenance cron..."
             if sudo -n true 2>/dev/null; then
-              sudo -n ENV_FILE="$PROJECT_DIR/.env" bash scripts/install-vps-maintenance.sh || echo "WARN: maintenance install failed"
+              sudo -n env ENV_FILE="$PROJECT_DIR/.env" bash scripts/install-vps-maintenance.sh || echo "WARN: maintenance install failed"
             else
               echo "WARN: sudo -n unavailable; skipping maintenance cron install"
             fi
