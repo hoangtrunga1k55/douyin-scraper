@@ -19,7 +19,6 @@ on:
     branches: [master]
     paths-ignore:
       - "**.md"
-      - ".github/**"
   workflow_dispatch: {}
 
 # Never run two deploys at once; let an in-flight deploy finish.
@@ -54,11 +53,11 @@ jobs:
               KEY="$1"
               VALUE="$2"
               [ -z "${VALUE:-}" ] && return 0
-              touch .env
+              touch .env || return 0
               if grep -q "^${KEY}=" .env; then
-                sed -i "s|^${KEY}=.*|${KEY}=${VALUE}|" .env
+                sed -i "s|^${KEY}=.*|${KEY}=${VALUE}|" .env || true
               else
-                printf "\n%s=%s\n" "$KEY" "$VALUE" >> .env
+                printf "\n%s=%s\n" "$KEY" "$VALUE" >> .env || true
               fi
             }
             set_env_var TELEGRAM_BOT_TOKEN "${TELEGRAM_BOT_TOKEN:-}"

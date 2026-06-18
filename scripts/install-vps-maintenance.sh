@@ -1,6 +1,7 @@
 #!/bin/bash
 # Install VPS maintenance: copy script to /usr/local/bin and install cron jobs.
 # CI/CD reruns this after deploy so cron and notification wiring stay current.
+# Keep this script idempotent because deploy may refresh it on every push.
 # Run on the VPS as root. Override ENV_FILE if your .env path differs.
 #
 #   sudo bash scripts/install-vps-maintenance.sh
