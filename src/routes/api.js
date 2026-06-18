@@ -7,6 +7,13 @@ const authApi = require('../middleware/authApi');
 const deductCredits = require('../middleware/deductCredits');
 const { addJob, getJobStatus } = require('../services/queue');
 
+function requireAdminApi(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Admin privileges required' });
+  }
+  next();
+}
+
 // ─── Queue-based Endpoints ───────────────────────────────────
 
 /**
@@ -161,7 +168,7 @@ router.get('/auth/status', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/auth/login', async (_req, res, next) => {
+router.get('/auth/login', authApi, requireAdminApi, async (_req, res, next) => {
   try {
     const { browser, page } = await douyinService.openLoginBrowser();
     res.json({ success: true, message: 'Browser opened. Login then call GET /api/auth/confirm.' });
@@ -170,7 +177,7 @@ router.get('/auth/login', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/auth/confirm', async (_req, res, next) => {
+router.get('/auth/confirm', authApi, requireAdminApi, async (_req, res, next) => {
   try {
     if (router._loginBrowser) {
       await router._loginBrowser.close();
@@ -195,7 +202,7 @@ router.get('/auth/status', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/auth/inject', async (_req, res, next) => {
+router.post('/auth/inject', authApi, requireAdminApi, async (_req, res, next) => {
   try {
     const result = await douyinService.injectEnvCookies();
     if (result) {
@@ -212,7 +219,7 @@ router.post('/auth/inject', async (_req, res, next) => {
  * Directly save a Douyin cookie string to .env and inject into browser profile (no restart needed).
  * Body: { cookie: "sessionid=xxx; ttwid=xxx; ..." }
  */
-router.post('/douyin/cookie', async (req, res) => {
+router.post('/douyin/cookie', authApi, requireAdminApi, async (req, res) => {
   try {
     const { cookie } = req.body;
     if (!cookie || cookie.trim().length < 10) {
@@ -257,7 +264,7 @@ const tiktokService = require('../services/tiktok');
  * Directly save a TikTok cookie string to .env and runtime config.
  * Body: { cookie: "sessionid=xxx; tt_webid=xxx; ..." }
  */
-router.post('/tiktok/cookie', async (req, res) => {
+router.post('/tiktok/cookie', authApi, requireAdminApi, async (req, res) => {
   try {
     const { cookie } = req.body;
     if (!cookie || cookie.trim().length < 10) {
@@ -292,7 +299,7 @@ router.post('/tiktok/cookie', async (req, res) => {
   }
 });
 
-router.get('/tiktok/auth/login', async (_req, res, next) => {
+router.get('/tiktok/auth/login', authApi, requireAdminApi, async (_req, res, next) => {
   try {
     const { browser, page } = await tiktokService.openLoginBrowser();
     res.json({ success: true, message: 'Browser opened. Login then call GET /api/tiktok/auth/confirm.' });
@@ -301,7 +308,7 @@ router.get('/tiktok/auth/login', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/tiktok/auth/confirm', async (_req, res, next) => {
+router.get('/tiktok/auth/confirm', authApi, requireAdminApi, async (_req, res, next) => {
   try {
     // Read cookies BEFORE closing the browser — closing first loses unflushed session data
     const result = await tiktokService.confirmLogin(router._tiktokLoginBrowser);

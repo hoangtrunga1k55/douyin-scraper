@@ -17,7 +17,14 @@ const deductCredits = (settingKey, fallback = 10) => {
 
       const cost = await Setting.get(settingKey, fallback);
 
-      if (user.credits < cost) {
+      const User = user.constructor;
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id, banned: { $ne: true }, credits: { $gte: cost } },
+        { $inc: { credits: -cost } },
+        { new: true }
+      );
+
+      if (!updatedUser) {
         // Log failed attempt
         await ApiLog.create({
           userId: user._id,
@@ -38,9 +45,6 @@ const deductCredits = (settingKey, fallback = 10) => {
         });
       }
 
-      user.credits -= cost;
-      await user.save();
-
       // Log successful call
       await ApiLog.create({
         userId: user._id,
@@ -50,11 +54,12 @@ const deductCredits = (settingKey, fallback = 10) => {
         ip: req.clientIp || req.ip || 'unknown',
         userAgent: req.headers['user-agent'] || '',
         creditsCost: cost,
-        creditsRemaining: user.credits,
+        creditsRemaining: updatedUser.credits,
         statusCode: 200,
         success: true,
       });
 
+      req.user = updatedUser;
       next();
     } catch (error) {
       console.error('Deduct Credits Error:', error);
