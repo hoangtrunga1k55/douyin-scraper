@@ -170,10 +170,17 @@ router.get('/auth/status', async (_req, res, next) => {
 
 router.get('/auth/login', authApi, requireAdminApi, async (_req, res, next) => {
   try {
+    // Single-flight: close any previous login browser first, so repeated
+    // /auth/login calls (or retries) don't orphan Chrome instances holding the profile.
+    if (router._loginBrowser) {
+      try { await router._loginBrowser.close(); } catch (_) { /* already gone */ }
+      router._loginBrowser = null;
+      router._loginPage = null;
+    }
     const { browser, page } = await douyinService.openLoginBrowser();
-    res.json({ success: true, message: 'Browser opened. Login then call GET /api/auth/confirm.' });
     router._loginBrowser = browser;
     router._loginPage = page;
+    res.json({ success: true, message: 'Browser opened. Login then call GET /api/auth/confirm.' });
   } catch (err) { next(err); }
 });
 
