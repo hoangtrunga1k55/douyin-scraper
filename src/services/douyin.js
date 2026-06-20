@@ -64,6 +64,10 @@ async function getBrowser() {
         '--disable-gpu',
         '--disable-web-security',
         '--lang=zh-CN',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-session-crashed-bubble',
+        '--hide-crash-restore-bubble',
       ],
     });
   }
@@ -94,26 +98,43 @@ async function openLoginBrowser() {
 
   logger.info('Opening login browser (visible)...');
   const execPath = process.env.PUPPETEER_EXECUTABLE_PATH || null;
-  const loginBrowser = await puppeteer.launch({
-    headless: false,
-    userDataDir: config.browserDataDir,
-    executablePath: execPath || undefined,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--window-size=1280,800',
-      '--lang=zh-CN',
-    ],
-    defaultViewport: { width: 1280, height: 800 },
-  });
+  let loginBrowser;
+  try {
+    loginBrowser = await puppeteer.launch({
+      headless: false,
+      userDataDir: config.browserDataDir,
+      executablePath: execPath || undefined,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--window-size=1280,800',
+        '--lang=zh-CN',
+        // Suppress the "Something went wrong / restore pages" profile bubble that
+        // appears when the profile was not closed cleanly (e.g. after a hard kill).
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-session-crashed-bubble',
+        '--hide-crash-restore-bubble',
+      ],
+      defaultViewport: { width: 1280, height: 800 },
+    });
 
-  const page = await loginBrowser.newPage();
-  await page.goto('https://www.douyin.com', {
-    waitUntil: 'domcontentloaded',
-    timeout: 30000,
-  });
+    const page = await loginBrowser.newPage();
+    await page.goto('https://www.douyin.com', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
 
-  return { browser: loginBrowser, page };
+    return { browser: loginBrowser, page };
+  } catch (err) {
+    // A launch/goto timeout must NOT leak a half-started browser: it would keep
+    // holding userDataDir and pile up Chrome processes on repeated attempts.
+    if (loginBrowser) {
+      try { await loginBrowser.close(); } catch (_) { /* already dead */ }
+    }
+    clearSingletonLocks(config.browserDataDir);
+    throw err;
+  }
 }
 
 /**
