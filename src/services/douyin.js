@@ -27,6 +27,7 @@ const httpClient = axios.create({
 });
 
 let browserInstance = null;
+let browserIdleTimer = null;
 
 /**
  * Get or launch a shared Puppeteer browser instance.
@@ -43,6 +44,18 @@ function clearSingletonLocks(profileDir) {
   for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
     try { fs.unlinkSync(`${profileDir}/${f}`); } catch (e) { /* not present */ }
   }
+}
+
+function touchBrowserActivity() {
+  if (browserIdleTimer) {
+    clearTimeout(browserIdleTimer);
+  }
+  browserIdleTimer = setTimeout(() => {
+    closeBrowser().catch((err) => {
+      logger.warn(`Browser idle close failed: ${err.message}`);
+    });
+  }, config.browserIdleTimeoutMs);
+  browserIdleTimer.unref?.();
 }
 
 async function getBrowser() {
@@ -71,6 +84,7 @@ async function getBrowser() {
       ],
     });
   }
+  touchBrowserActivity();
   return browserInstance;
 }
 
@@ -78,6 +92,10 @@ async function getBrowser() {
  * Close the browser instance
  */
 async function closeBrowser() {
+  if (browserIdleTimer) {
+    clearTimeout(browserIdleTimer);
+    browserIdleTimer = null;
+  }
   if (browserInstance) {
     await browserInstance.close();
     browserInstance = null;
@@ -196,15 +214,18 @@ async function checkSession() {
       return false;
     });
 
-    return {
+    const result = {
       valid: hasTtwid && cookieCount > 5,
       logged_in: isLoggedIn,
       cookie_count: cookieCount,
       has_ttwid: hasTtwid,
       has_session: hasSessionId,
     };
+    touchBrowserActivity();
+    return result;
   } finally {
     await page.close();
+    touchBrowserActivity();
   }
 }
 
@@ -372,6 +393,7 @@ async function parseVideoViaAPI(videoId) {
     throw new Error(`API returned no video detail (status: ${apiResult.status})`);
   } finally {
     await page.close();
+    touchBrowserActivity();
   }
 }
 
@@ -540,6 +562,7 @@ async function parseVideoViaPuppeteer(videoId) {
     );
   } finally {
     await page.close();
+    touchBrowserActivity();
   }
 }
 
@@ -694,10 +717,16 @@ async function getCookieString() {
   const page = await browser.newPage();
   try {
     const cookies = await browser.cookies('https://www.douyin.com');
-    if (cookies.length === 0) return null;
-    return cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    if (cookies.length === 0) {
+      touchBrowserActivity();
+      return null;
+    }
+    const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    touchBrowserActivity();
+    return cookieString;
   } finally {
     await page.close();
+    touchBrowserActivity();
   }
 }
 
@@ -834,6 +863,7 @@ async function getUserVideosViaAPI(secUid, count, cursor, cookieStr, sinceTs = n
     };
   } finally {
     await page.close();
+    touchBrowserActivity();
   }
 }
 
@@ -953,6 +983,7 @@ async function getUserVideosViaPuppeteer(secUid, profileUrl, count, cursor = 0) 
     throw new Error(errMsg);
   } finally {
     await page.close();
+    touchBrowserActivity();
   }
 }
 

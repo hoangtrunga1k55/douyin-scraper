@@ -13,8 +13,11 @@ const config = {
 
   // Download settings
   downloadDir: process.env.DOWNLOAD_DIR || './downloads',
-  maxConcurrentDownloads: parseInt(process.env.MAX_CONCURRENT_DOWNLOADS, 10) || 3,
+  maxConcurrentDownloads: parseInt(process.env.MAX_CONCURRENT_DOWNLOADS, 10) || 1,
   requestTimeout: parseInt(process.env.REQUEST_TIMEOUT, 10) || 30000,
+
+  // Browser lifecycle
+  browserIdleTimeoutMs: parseInt(process.env.BROWSER_IDLE_TIMEOUT_MS, 10) || 300000,
 
   // Proxy settings
   httpProxy: process.env.HTTP_PROXY || process.env.HTTPS_PROXY || null,

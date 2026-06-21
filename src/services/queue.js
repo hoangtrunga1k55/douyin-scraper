@@ -12,6 +12,10 @@ const connection = new IORedis({
   maxRetriesPerRequest: null, // required by BullMQ
 });
 
+const QUEUE_CONCURRENCY = parseInt(process.env.QUEUE_CONCURRENCY, 10) || 1;
+const QUEUE_LIMIT_MAX = parseInt(process.env.QUEUE_LIMIT_MAX, 10) || 2;
+const QUEUE_LIMIT_DURATION_MS = parseInt(process.env.QUEUE_LIMIT_DURATION_MS, 10) || 10000;
+
 // ─── Queue ───────────────────────────────────────────────────
 const douyinQueue = new Queue('douyin-jobs', { connection });
 
@@ -46,10 +50,10 @@ function startWorker(douyinService, tiktokService) {
     }
   }, {
     connection,
-    concurrency: 2, // Process max 2 jobs at a time
+    concurrency: QUEUE_CONCURRENCY,
     limiter: {
-      max: 5,
-      duration: 10000, // Max 5 jobs per 10 seconds
+      max: QUEUE_LIMIT_MAX,
+      duration: QUEUE_LIMIT_DURATION_MS,
     },
   });
 
@@ -61,7 +65,7 @@ function startWorker(douyinService, tiktokService) {
     logger.error(`[Queue] Job ${job?.id} failed: ${err.message}`);
   });
 
-  logger.info('✅ Queue worker started (concurrency: 2)');
+  logger.info(`✅ Queue worker started (concurrency: ${QUEUE_CONCURRENCY})`);
   return worker;
 }
 
