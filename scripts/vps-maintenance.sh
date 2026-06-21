@@ -17,7 +17,9 @@ MEM_ALERT_THRESHOLD="${MEM_ALERT_THRESHOLD:-85}"
 SWAP_ALERT_THRESHOLD="${SWAP_ALERT_THRESHOLD:-50}"
 LOAD_ALERT_THRESHOLD="${LOAD_ALERT_THRESHOLD:-}"
 RESTART_ALERT_THRESHOLD="${RESTART_ALERT_THRESHOLD:-3}"
-SUSPICIOUS_AUTH_THRESHOLD="${SUSPICIOUS_AUTH_THRESHOLD:-10}"
+# Public VPSes often see steady SSH noise; keep the threshold high enough to avoid Telegram spam.
+SUSPICIOUS_AUTH_THRESHOLD="${SUSPICIOUS_AUTH_THRESHOLD:-80}"
+AUTH_ALERT_COOLDOWN_SECONDS="${AUTH_ALERT_COOLDOWN_SECONDS:-21600}"
 APP_ERROR_THRESHOLD="${APP_ERROR_THRESHOLD:-8}"
 MONITOR_LOG_LOOKBACK="${MONITOR_LOG_LOOKBACK:-15m}"
 ALERT_COOLDOWN_SECONDS="${ALERT_COOLDOWN_SECONDS:-3600}"
@@ -68,6 +70,7 @@ notify_state() {
   local state="$2"
   local title="$3"
   local body="$4"
+  local cooldown="${5:-$ALERT_COOLDOWN_SECONDS}"
   local k now prev last should_send
   k=$(safe_key "$key")
   now=$(date +%s)
@@ -80,7 +83,7 @@ notify_state() {
     if [ "$prev" = "unknown" ] && [ "$state" = "ok" ]; then
       should_send=0
     fi
-  elif [ "$state" != "ok" ] && [ $((now - last)) -ge "$ALERT_COOLDOWN_SECONDS" ]; then
+  elif [ "$state" != "ok" ] && [ $((now - last)) -ge "$cooldown" ]; then
     should_send=1
   fi
 
@@ -257,7 +260,17 @@ check_suspicious_activity() {
     | tail -30 || true)
   app_errors=$(printf '%s' "$logs" | sed '/^$/d' | wc -l | tr -d ' ')
 
-  if [ "$auth_count" -ge "$SUSPICIOUS_AUTH_THRESHOLD" ] || [ "$oom_count" -gt 0 ] || [ "$app_errors" -ge "$APP_ERROR_THRESHOLD" ]; then
+  if [ "$auth_count" -ge "$SUSPICIOUS_AUTH_THRESHOLD" ]; then
+    body="Auth failures (${MONITOR_LOG_LOOKBACK}): <b>${auth_count}</b>
+Kernel OOM events: <b>${oom_count}</b>
+App suspicious/error lines: <b>${app_errors}</b>
+
+<b>Recent matching app logs:</b>
+<pre>$(html_escape "$logs")</pre>
+$(debug_commands)"
+    notify_state "suspicious-auth" "alert" "Suspicious SSH Activity Alert" "$body" "$AUTH_ALERT_COOLDOWN_SECONDS"
+    notify_state "suspicious" "ok" "Suspicious Activity Recovered" "No kernel/app suspicious threshold exceeded in last ${MONITOR_LOG_LOOKBACK}."
+  elif [ "$oom_count" -gt 0 ] || [ "$app_errors" -ge "$APP_ERROR_THRESHOLD" ]; then
     body="Auth failures (${MONITOR_LOG_LOOKBACK}): <b>${auth_count}</b>
 Kernel OOM events: <b>${oom_count}</b>
 App suspicious/error lines: <b>${app_errors}</b>
@@ -266,8 +279,10 @@ App suspicious/error lines: <b>${app_errors}</b>
 <pre>$(html_escape "$logs")</pre>
 $(debug_commands)"
     notify_state "suspicious" "alert" "Suspicious Activity Alert" "$body"
+    notify_state "suspicious-auth" "ok" "Suspicious SSH Activity Recovered" "SSH auth failures are below alert threshold."
   else
     notify_state "suspicious" "ok" "Suspicious Activity Recovered" "No suspicious threshold exceeded in last ${MONITOR_LOG_LOOKBACK}."
+    notify_state "suspicious-auth" "ok" "Suspicious SSH Activity Recovered" "SSH auth failures are below alert threshold."
   fi
 }
 
