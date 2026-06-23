@@ -65,10 +65,19 @@ jobs:
 
             chmod +x scripts/*.sh
             echo "▶ Installing/updating VPS maintenance cron..."
-            if sudo -n true 2>/dev/null; then
-              sudo -n env ENV_FILE="$PROJECT_DIR/.env" bash scripts/install-vps-maintenance.sh || echo "WARN: maintenance install failed"
+            if [ "$(id -u)" -eq 0 ]; then
+              env ENV_FILE="$PROJECT_DIR/.env" \
+                PROJECT_DIR="$PROJECT_DIR" \
+                COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml" \
+                bash scripts/install-vps-maintenance.sh
+            elif sudo -n true 2>/dev/null; then
+              sudo -n env ENV_FILE="$PROJECT_DIR/.env" \
+                PROJECT_DIR="$PROJECT_DIR" \
+                COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml" \
+                bash scripts/install-vps-maintenance.sh
             else
-              echo "WARN: sudo -n unavailable; skipping maintenance cron install"
+              echo "ERROR: root or passwordless sudo is required to install maintenance cron"
+              exit 1
             fi
             bash scripts/deploy.sh
         env:

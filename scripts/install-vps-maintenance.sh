@@ -19,6 +19,8 @@ ENV_FILE="${ENV_FILE:-/home/ubuntu/Project/douyin-scraper/.env}"
 PROJECT_NAME="${PROJECT_NAME:-douyin-scraper}"
 PROJECT_DIR="${PROJECT_DIR:-/home/ubuntu/Project/douyin-scraper}"
 COMPOSE_FILE="${COMPOSE_FILE:-${PROJECT_DIR}/docker-compose.yml}"
+SUSPICIOUS_AUTH_THRESHOLD="${SUSPICIOUS_AUTH_THRESHOLD:-80}"
+AUTH_ALERT_COOLDOWN_SECONDS="${AUTH_ALERT_COOLDOWN_SECONDS:-21600}"
 
 install -m 0755 "$SCRIPT_DIR/vps-maintenance.sh" /usr/local/bin/vps-maintenance.sh
 # Patch default ENV_FILE so manual runs work without exporting env var
@@ -42,6 +44,8 @@ ENV_FILE=${ENV_FILE}
 PROJECT_NAME=${PROJECT_NAME}
 PROJECT_DIR=${PROJECT_DIR}
 COMPOSE_FILE=${COMPOSE_FILE}
+SUSPICIOUS_AUTH_THRESHOLD=${SUSPICIOUS_AUTH_THRESHOLD}
+AUTH_ALERT_COOLDOWN_SECONDS=${AUTH_ALERT_COOLDOWN_SECONDS}
 
 */5 * * * * root /usr/local/bin/vps-maintenance.sh monitor    >> /var/log/vps-maintenance.log 2>&1
 30 8 * * *  root /usr/local/bin/vps-maintenance.sh summary    >> /var/log/vps-maintenance.log 2>&1

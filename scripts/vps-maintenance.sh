@@ -17,12 +17,15 @@ MEM_ALERT_THRESHOLD="${MEM_ALERT_THRESHOLD:-85}"
 SWAP_ALERT_THRESHOLD="${SWAP_ALERT_THRESHOLD:-50}"
 LOAD_ALERT_THRESHOLD="${LOAD_ALERT_THRESHOLD:-}"
 RESTART_ALERT_THRESHOLD="${RESTART_ALERT_THRESHOLD:-3}"
-SUSPICIOUS_AUTH_THRESHOLD="${SUSPICIOUS_AUTH_THRESHOLD:-10}"
+# Public VPSes often see steady SSH noise; keep the threshold high enough to avoid Telegram spam.
+SUSPICIOUS_AUTH_THRESHOLD="${SUSPICIOUS_AUTH_THRESHOLD:-80}"
+AUTH_ALERT_COOLDOWN_SECONDS="${AUTH_ALERT_COOLDOWN_SECONDS:-21600}"
 APP_ERROR_THRESHOLD="${APP_ERROR_THRESHOLD:-8}"
 MONITOR_LOG_LOOKBACK="${MONITOR_LOG_LOOKBACK:-15m}"
 ALERT_COOLDOWN_SECONDS="${ALERT_COOLDOWN_SECONDS:-3600}"
 MONITOR_HEALTH_URLS="${MONITOR_HEALTH_URLS:-http://127.0.0.1:3000/api/health}"
 MONITOR_IGNORE_CONTAINERS="${MONITOR_IGNORE_CONTAINERS:-}"
+DOCKER_EXIT_ALERT_GRACE_SECONDS="${DOCKER_EXIT_ALERT_GRACE_SECONDS:-1800}"
 STATE_DIR="${STATE_DIR:-/var/lib/vps-monitor-${PROJECT_NAME}}"
 
 HOSTNAME=$(hostname)
@@ -68,6 +71,7 @@ notify_state() {
   local state="$2"
   local title="$3"
   local body="$4"
+  local cooldown="${5:-$ALERT_COOLDOWN_SECONDS}"
   local k now prev last should_send
   k=$(safe_key "$key")
   now=$(date +%s)
@@ -80,7 +84,7 @@ notify_state() {
     if [ "$prev" = "unknown" ] && [ "$state" = "ok" ]; then
       should_send=0
     fi
-  elif [ "$state" != "ok" ] && [ $((now - last)) -ge "$ALERT_COOLDOWN_SECONDS" ]; then
+  elif [ "$state" != "ok" ] && [ $((now - last)) -ge "$cooldown" ]; then
     should_send=1
   fi
 
@@ -198,7 +202,8 @@ check_health_urls() {
   for url in "${urls[@]}"; do
     url=$(printf '%s' "$url" | xargs)
     [ -z "$url" ] && continue
-    code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+    code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || true)
+    [ -z "$code" ] && code="000"
     key="health:${url}"
     if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
       notify_state "$key" "ok" "Health Check Recovered" "URL: <code>${url}</code>
@@ -213,15 +218,29 @@ $(debug_commands)"
 }
 
 check_docker() {
-  local ps_out bad restart_lines name status restarts body
-  ps_out=$(compose_cmd ps -a --format '{{.Name}}|{{.Status}}' 2>/dev/null || docker ps -a --format '{{.Names}}|{{.Status}}' 2>/dev/null || true)
+  local ps_out bad restart_lines name status restarts finished_at finished_epoch age now body
+  ps_out=$(compose_cmd ps -a --format '{{.Name}}' 2>/dev/null || docker ps -a --format '{{.Names}}' 2>/dev/null || true)
   bad=""
   restart_lines=""
+  now=$(date +%s)
 
-  while IFS='|' read -r name status; do
+  while IFS= read -r name; do
     [ -z "$name" ] && continue
     is_ignored_container "$name" && continue
-    if printf '%s' "$status" | grep -Eiq 'unhealthy|restarting|exited|dead'; then
+    status=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo "")
+    [ -z "$status" ] && continue
+    if [ "$status" = "exited" ]; then
+      finished_at=$(docker inspect -f '{{.State.FinishedAt}}' "$name" 2>/dev/null || echo "")
+      finished_epoch=$(date -d "$finished_at" +%s 2>/dev/null || echo 0)
+      age=0
+      if [ "$finished_epoch" -gt 0 ]; then
+        age=$((now - finished_epoch))
+      fi
+      if [ "$age" -le "$DOCKER_EXIT_ALERT_GRACE_SECONDS" ]; then
+        bad="${bad}${name} | exited (${age}s ago)
+"
+      fi
+    elif printf '%s' "$status" | grep -Eiq 'unhealthy|restarting|dead'; then
       bad="${bad}${name} | ${status}
 "
     fi
@@ -257,7 +276,17 @@ check_suspicious_activity() {
     | tail -30 || true)
   app_errors=$(printf '%s' "$logs" | sed '/^$/d' | wc -l | tr -d ' ')
 
-  if [ "$auth_count" -ge "$SUSPICIOUS_AUTH_THRESHOLD" ] || [ "$oom_count" -gt 0 ] || [ "$app_errors" -ge "$APP_ERROR_THRESHOLD" ]; then
+  if [ "$auth_count" -ge "$SUSPICIOUS_AUTH_THRESHOLD" ]; then
+    body="Auth failures (${MONITOR_LOG_LOOKBACK}): <b>${auth_count}</b>
+Kernel OOM events: <b>${oom_count}</b>
+App suspicious/error lines: <b>${app_errors}</b>
+
+<b>Recent matching app logs:</b>
+<pre>$(html_escape "$logs")</pre>
+$(debug_commands)"
+    notify_state "suspicious-auth" "alert" "Suspicious SSH Activity Alert" "$body" "$AUTH_ALERT_COOLDOWN_SECONDS"
+    notify_state "suspicious" "ok" "Suspicious Activity Recovered" "No kernel/app suspicious threshold exceeded in last ${MONITOR_LOG_LOOKBACK}."
+  elif [ "$oom_count" -gt 0 ] || [ "$app_errors" -ge "$APP_ERROR_THRESHOLD" ]; then
     body="Auth failures (${MONITOR_LOG_LOOKBACK}): <b>${auth_count}</b>
 Kernel OOM events: <b>${oom_count}</b>
 App suspicious/error lines: <b>${app_errors}</b>
@@ -266,8 +295,10 @@ App suspicious/error lines: <b>${app_errors}</b>
 <pre>$(html_escape "$logs")</pre>
 $(debug_commands)"
     notify_state "suspicious" "alert" "Suspicious Activity Alert" "$body"
+    notify_state "suspicious-auth" "ok" "Suspicious SSH Activity Recovered" "SSH auth failures are below alert threshold."
   else
     notify_state "suspicious" "ok" "Suspicious Activity Recovered" "No suspicious threshold exceeded in last ${MONITOR_LOG_LOOKBACK}."
+    notify_state "suspicious-auth" "ok" "Suspicious SSH Activity Recovered" "SSH auth failures are below alert threshold."
   fi
 }
 
