@@ -25,6 +25,7 @@ MONITOR_LOG_LOOKBACK="${MONITOR_LOG_LOOKBACK:-15m}"
 ALERT_COOLDOWN_SECONDS="${ALERT_COOLDOWN_SECONDS:-3600}"
 MONITOR_HEALTH_URLS="${MONITOR_HEALTH_URLS:-http://127.0.0.1:3000/api/health}"
 MONITOR_IGNORE_CONTAINERS="${MONITOR_IGNORE_CONTAINERS:-}"
+DOCKER_EXIT_ALERT_GRACE_SECONDS="${DOCKER_EXIT_ALERT_GRACE_SECONDS:-1800}"
 STATE_DIR="${STATE_DIR:-/var/lib/vps-monitor-${PROJECT_NAME}}"
 
 HOSTNAME=$(hostname)
@@ -201,7 +202,8 @@ check_health_urls() {
   for url in "${urls[@]}"; do
     url=$(printf '%s' "$url" | xargs)
     [ -z "$url" ] && continue
-    code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+    code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || true)
+    [ -z "$code" ] && code="000"
     key="health:${url}"
     if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
       notify_state "$key" "ok" "Health Check Recovered" "URL: <code>${url}</code>
@@ -216,15 +218,29 @@ $(debug_commands)"
 }
 
 check_docker() {
-  local ps_out bad restart_lines name status restarts body
-  ps_out=$(compose_cmd ps -a --format '{{.Name}}|{{.Status}}' 2>/dev/null || docker ps -a --format '{{.Names}}|{{.Status}}' 2>/dev/null || true)
+  local ps_out bad restart_lines name status restarts finished_at finished_epoch age now body
+  ps_out=$(compose_cmd ps -a --format '{{.Name}}' 2>/dev/null || docker ps -a --format '{{.Names}}' 2>/dev/null || true)
   bad=""
   restart_lines=""
+  now=$(date +%s)
 
-  while IFS='|' read -r name status; do
+  while IFS= read -r name; do
     [ -z "$name" ] && continue
     is_ignored_container "$name" && continue
-    if printf '%s' "$status" | grep -Eiq 'unhealthy|restarting|exited|dead'; then
+    status=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo "")
+    [ -z "$status" ] && continue
+    if [ "$status" = "exited" ]; then
+      finished_at=$(docker inspect -f '{{.State.FinishedAt}}' "$name" 2>/dev/null || echo "")
+      finished_epoch=$(date -d "$finished_at" +%s 2>/dev/null || echo 0)
+      age=0
+      if [ "$finished_epoch" -gt 0 ]; then
+        age=$((now - finished_epoch))
+      fi
+      if [ "$age" -le "$DOCKER_EXIT_ALERT_GRACE_SECONDS" ]; then
+        bad="${bad}${name} | exited (${age}s ago)
+"
+      fi
+    elif printf '%s' "$status" | grep -Eiq 'unhealthy|restarting|dead'; then
       bad="${bad}${name} | ${status}
 "
     fi
