@@ -17,8 +17,21 @@ MEM_ALERT_THRESHOLD="${MEM_ALERT_THRESHOLD:-85}"
 SWAP_ALERT_THRESHOLD="${SWAP_ALERT_THRESHOLD:-50}"
 LOAD_ALERT_THRESHOLD="${LOAD_ALERT_THRESHOLD:-}"
 RESTART_ALERT_THRESHOLD="${RESTART_ALERT_THRESHOLD:-3}"
-# Public VPSes often see steady SSH noise; keep the threshold high enough to avoid Telegram spam.
-SUSPICIOUS_AUTH_THRESHOLD="${SUSPICIOUS_AUTH_THRESHOLD:-80}"
+# SSH brute-force on a public VPS is constant background noise (many distinct
+# IPs, each quickly fail2ban-banned) and is NOT actionable, so we no longer page
+# on the raw failure count. We only page on genuine attack signals (see
+# check_suspicious_activity): a successful login from an untrusted IP, a single
+# IP hammering past fail2ban, or fail2ban being down.
+#
+# SINGLE_IP_FAIL_THRESHOLD: failures from ONE IP in the lookback window that
+# indicate a determined/targeted attacker fail2ban failed to contain (fail2ban
+# maxretry is 5, so anything this high means it slipped through or is down).
+SINGLE_IP_FAIL_THRESHOLD="${SINGLE_IP_FAIL_THRESHOLD:-30}"
+# Space-separated IPs allowed to log in with a PASSWORD (your admin IPs). A
+# password login from anything NOT listed pages immediately so you get a
+# heads-up. CI/CD uses publickey and is never checked here, so deploys don't
+# false-positive. Empty disables the login check entirely.
+SSH_TRUSTED_IPS="${SSH_TRUSTED_IPS:-118.70.9.6 1.55.92.97}"
 AUTH_ALERT_COOLDOWN_SECONDS="${AUTH_ALERT_COOLDOWN_SECONDS:-21600}"
 APP_ERROR_THRESHOLD="${APP_ERROR_THRESHOLD:-8}"
 MONITOR_LOG_LOOKBACK="${MONITOR_LOG_LOOKBACK:-15m}"
@@ -264,10 +277,7 @@ $(debug_commands)"
 }
 
 check_suspicious_activity() {
-  local auth_count oom_count app_errors body logs
-  auth_count=$(journalctl --since "-${MONITOR_LOG_LOOKBACK}" --no-pager 2>/dev/null \
-    | grep -Eai 'Failed password|Invalid user|authentication failure|POSSIBLE BREAK-IN' \
-    | wc -l | tr -d ' ')
+  local oom_count app_errors body logs
   oom_count=$(journalctl -k --since "-${MONITOR_LOG_LOOKBACK}" --no-pager 2>/dev/null \
     | grep -Eai 'out of memory|oom-killer|killed process' \
     | wc -l | tr -d ' ')
@@ -276,29 +286,81 @@ check_suspicious_activity() {
     | tail -30 || true)
   app_errors=$(printf '%s' "$logs" | sed '/^$/d' | wc -l | tr -d ' ')
 
-  if [ "$auth_count" -ge "$SUSPICIOUS_AUTH_THRESHOLD" ]; then
-    body="Auth failures (${MONITOR_LOG_LOOKBACK}): <b>${auth_count}</b>
-Kernel OOM events: <b>${oom_count}</b>
-App suspicious/error lines: <b>${app_errors}</b>
+  check_ssh_attack
 
-<b>Recent matching app logs:</b>
-<pre>$(html_escape "$logs")</pre>
-$(debug_commands)"
-    notify_state "suspicious-auth" "alert" "Suspicious SSH Activity Alert" "$body" "$AUTH_ALERT_COOLDOWN_SECONDS"
-    notify_state "suspicious" "ok" "Suspicious Activity Recovered" "No kernel/app suspicious threshold exceeded in last ${MONITOR_LOG_LOOKBACK}."
-  elif [ "$oom_count" -gt 0 ] || [ "$app_errors" -ge "$APP_ERROR_THRESHOLD" ]; then
-    body="Auth failures (${MONITOR_LOG_LOOKBACK}): <b>${auth_count}</b>
-Kernel OOM events: <b>${oom_count}</b>
+  if [ "$oom_count" -gt 0 ] || [ "$app_errors" -ge "$APP_ERROR_THRESHOLD" ]; then
+    body="Kernel OOM events: <b>${oom_count}</b>
 App suspicious/error lines: <b>${app_errors}</b>
 
 <b>Recent matching app logs:</b>
 <pre>$(html_escape "$logs")</pre>
 $(debug_commands)"
     notify_state "suspicious" "alert" "Suspicious Activity Alert" "$body"
-    notify_state "suspicious-auth" "ok" "Suspicious SSH Activity Recovered" "SSH auth failures are below alert threshold."
   else
     notify_state "suspicious" "ok" "Suspicious Activity Recovered" "No suspicious threshold exceeded in last ${MONITOR_LOG_LOOKBACK}."
-    notify_state "suspicious-auth" "ok" "Suspicious SSH Activity Recovered" "SSH auth failures are below alert threshold."
+  fi
+}
+
+# check_ssh_attack pages ONLY on genuine SSH attack signals, never on the
+# constant background brute-force noise (which fail2ban already contains):
+#   1) A successful login from an IP not in SSH_TRUSTED_IPS (someone got in).
+#   2) A single IP with >= SINGLE_IP_FAIL_THRESHOLD failures — a determined or
+#      targeted attacker that slipped past fail2ban (maxretry 5).
+#   3) fail2ban not running, so the noise is no longer being contained.
+# Distributed noise (many IPs, each banned after a few tries) trips none of
+# these and stays silent. The raw counts are reported as context only.
+check_ssh_attack() {
+  local since="-${MONITOR_LOG_LOOKBACK}"
+  local fails top_line top_ip top_count distinct_ips f2b_active banned_now
+  local accepted bad_logins reasons body
+
+  fails=$(journalctl _COMM=sshd --since "$since" --no-pager 2>/dev/null \
+    | grep -Eai 'Failed password|Invalid user|authentication failure|POSSIBLE BREAK-IN' || true)
+  # Worst single offender in the window.
+  top_line=$(printf '%s\n' "$fails" \
+    | grep -oE 'from [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $2}' \
+    | sort | uniq -c | sort -rn | head -1)
+  top_count=$(printf '%s' "$top_line" | awk '{print $1+0}')
+  top_ip=$(printf '%s' "$top_line" | awk '{print $2}')
+  distinct_ips=$(printf '%s\n' "$fails" \
+    | grep -oE 'from [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $2}' \
+    | sort -u | sed '/^$/d' | wc -l | tr -d ' ')
+
+  # fail2ban health + current bans (context).
+  f2b_active="no"
+  systemctl is-active --quiet fail2ban 2>/dev/null && f2b_active="yes"
+  banned_now=$(fail2ban-client status sshd 2>/dev/null \
+    | grep -oE 'Currently banned:[[:space:]]*[0-9]+' | grep -oE '[0-9]+' || echo 0)
+
+  # Every successful password login is reported (publickey/CI-CD excluded), minus
+  # any IP explicitly suppressed via SSH_TRUSTED_IPS.
+  bad_logins=""
+  if [ -n "$SSH_TRUSTED_IPS" ]; then
+    accepted=$(journalctl _COMM=sshd --since "$since" --no-pager 2>/dev/null \
+      | grep -Eai 'Accepted (password|keyboard-interactive)' \
+      | grep -oE 'from [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $2}' | sort -u || true)
+    if [ -n "$accepted" ]; then
+      bad_logins=$(printf '%s\n' "$accepted" \
+        | grep -vxF -f <(printf '%s\n' $SSH_TRUSTED_IPS) || true)
+    fi
+  fi
+
+  reasons=""
+  [ "$f2b_active" = "no" ] && reasons="${reasons}\xE2\x80\xA2 fail2ban KHÔNG chạy — brute-force không còn được chặn\n"
+  if [ "${top_count:-0}" -ge "$SINGLE_IP_FAIL_THRESHOLD" ]; then
+    reasons="${reasons}\xE2\x80\xA2 1 IP đánh dồn dập: <b>${top_ip}</b> (${top_count} lần) — vượt fail2ban\n"
+  fi
+  if [ -n "$bad_logins" ]; then
+    reasons="${reasons}\xE2\x80\xA2 ĐĂNG NHẬP THÀNH CÔNG từ IP lạ: <b>$(printf '%s' "$bad_logins" | tr '\n' ' ')</b>\n"
+  fi
+
+  if [ -n "$reasons" ]; then
+    body="$(printf "$reasons")
+<b>Bối cảnh ${MONITOR_LOG_LOOKBACK}:</b> ${distinct_ips} IP khác nhau gây lỗi đăng nhập; fail2ban đang chặn ${banned_now} IP.
+$(debug_commands)"
+    notify_state "suspicious-auth" "alert" "🚨 SSH Attack Alert" "$body" "$AUTH_ALERT_COOLDOWN_SECONDS"
+  else
+    notify_state "suspicious-auth" "ok" "SSH Attack Recovered" "Chỉ còn brute-force nền (${distinct_ips} IP), fail2ban đang chặn ${banned_now} IP — không có dấu hiệu tấn công thật."
   fi
 }
 
