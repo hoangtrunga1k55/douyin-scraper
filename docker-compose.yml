@@ -9,6 +9,10 @@ services:
     build: .
     container_name: douyin-downloader
     restart: unless-stopped
+    # tini as PID 1 reaps zombie chrome_crashpad_handler children. Without this
+    # they pile up (~18/h) until the process limit is hit and posix_spawn fails
+    # with EAGAIN, killing the scraper.
+    init: true
     depends_on:
       - mongo
       - redis
