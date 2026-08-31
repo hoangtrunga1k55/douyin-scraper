@@ -168,7 +168,10 @@ router.get('/auth/status', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/auth/login', authApi, requireAdminApi, async (_req, res, next) => {
+// No API token: refreshing the Douyin session means scanning a QR code in the
+// noVNC window, a manual operator step. Requiring a Bearer token here forced us
+// to pull an admin token out of Mongo just to re-login.
+router.get('/auth/login', async (_req, res, next) => {
   try {
     // Single-flight: close any previous login browser first, so repeated
     // /auth/login calls (or retries) don't orphan Chrome instances holding the profile.
@@ -184,7 +187,8 @@ router.get('/auth/login', authApi, requireAdminApi, async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/auth/confirm', authApi, requireAdminApi, async (_req, res, next) => {
+// Paired with /auth/login above, so it carries the same no-token rule.
+router.get('/auth/confirm', async (_req, res, next) => {
   try {
     if (router._loginBrowser) {
       await router._loginBrowser.close();
